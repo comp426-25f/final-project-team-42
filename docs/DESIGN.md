@@ -110,4 +110,4 @@ Provides a personalized hub so students can quickly jump back into their groups,
 
 ## High-Fidelity Prototype
 
-"https://embed.figma.com/design/NmEYEIOuuh0vovPcLrevVI/StudyBuddy-Hi-Fi-Prototype?node-id=0-1&embed-host=share"
+https://embed.figma.com/design/NmEYEIOuuh0vovPcLrevVI/StudyBuddy-Hi-Fi-Prototype?node-id=0-1&embed-host=share
