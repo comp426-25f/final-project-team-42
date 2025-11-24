@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/router";
+import { createSupabaseComponentClient } from "@/utils/supabase/clients/component";
 import { Book, Home, Users, Sparkles, MessageSquare, FileText, Settings, Search, Plus, Flame, TrendingUp, PanelLeft, ChevronRight } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,8 +26,43 @@ const initialStudyGroups: StudyGroup[] = [];
 
 export default function DashboardPage() {
   const router = useRouter();
+  const supabase = createSupabaseComponentClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [studyGroups, setStudyGroups] = useState<StudyGroup[]>(initialStudyGroups);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchGroups();
+  }, []);
+
+  const fetchGroups = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("groups")
+        .select(`
+          *,
+          memberships(count),
+          messages(count)
+        `);
+      if (error) throw error;
+      
+      const formattedGroups: StudyGroup[] = (data || []).map((group: any) => ({
+        id: group.id,
+        name: group.name,
+        description: group.description || "",
+        members: group.memberships?.[0]?.count || 0,
+        resources: group.messages?.[0]?.count || 0,
+        lastActivity: "Recently",
+        color: groupColors[group.id % groupColors.length],
+        imageUrl: null,
+      }));
+      setStudyGroups(formattedGroups);
+    } catch (error) {
+      console.error("Error fetching groups:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
@@ -58,31 +94,35 @@ export default function DashboardPage() {
     }
   };
 
-  const handleCreateGroup = () => {
+  const handleCreateGroup = async () => {
     if (!groupName || !course || !description) return;
 
-    const newId = studyGroups.length > 0 ? Math.max(...studyGroups.map((g) => g.id)) + 1 : 1;
-    
-    const randomColor = groupColors[Math.floor(Math.random() * groupColors.length)];
+    try {
+      const { data, error } = await supabase
+        .from("groups")
+        .insert({
+          name: `${course} - ${groupName}`,
+          description: description,
+          owner_id: 1, // Default owner for testing
+          is_private: false,
+        })
+        .select()
+        .single();
 
-    const newGroup: StudyGroup = {
-      id: newId,
-      name: groupName,
-      description: description,
-      members: 0,
-      resources: 0,
-      lastActivity: "Just now",
-      color: randomColor,
-      imageUrl: groupImagePreview,
-    };
+      if (error) throw error;
 
-    setStudyGroups([newGroup, ...studyGroups]);
+      // Refresh groups list
+      fetchGroups();
 
-    setIsCreateGroupOpen(false);
-    setGroupName("");
-    setCourse("");
-    setDescription("");
-    setGroupImagePreview(null);
+      setIsCreateGroupOpen(false);
+      setGroupName("");
+      setCourse("");
+      setDescription("");
+      setGroupImagePreview(null);
+    } catch (error) {
+      console.error("Error creating group:", error);
+      alert("Failed to create group");
+    }
   };
 
   const handleJoinGroup = () => {

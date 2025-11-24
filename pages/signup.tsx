@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
+import { createSupabaseComponentClient } from "@/utils/supabase/clients/component";
 import { Book, Users, GraduationCap, MessageSquare, User, Mail, Lock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,10 +10,53 @@ import { Button } from "@/components/ui/button";
 
 export default function SignupPage() {
   const router = useRouter();
+  const supabase = createSupabaseComponentClient();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: username,
+          },
+        },
+      });
+      if (error) throw error;
+      
+      // Create user in users table
+      if (data.user) {
+        await supabase.from("users").insert({
+          id: parseInt(data.user.id.substring(0, 8), 16), // Convert UUID to int for compatibility
+          name: username,
+          email: email,
+        });
+      }
+      
+      router.push("/dashboard");
+    } catch (error: any) {
+      setError(error.message || "Signup failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex">
@@ -144,8 +188,13 @@ export default function SignupPage() {
                 </div>
               </div>
               
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white h-10 mt-2">
-                Create Account
+              {error && <p className="text-sm text-red-600">{error}</p>}
+              <Button 
+                onClick={handleSignup}
+                disabled={loading}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white h-10 mt-2"
+              >
+                {loading ? "Creating Account..." : "Create Account"}
               </Button>
               </TabsContent>
             </Tabs>

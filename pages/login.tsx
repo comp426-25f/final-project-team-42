@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
+import { createSupabaseComponentClient } from "@/utils/supabase/clients/component";
 import { Book, Users, GraduationCap, MessageSquare, User, Mail, Lock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,12 +10,33 @@ import { Button } from "@/components/ui/button";
 
 export default function LoginPage() {
   const router = useRouter();
+  const supabase = createSupabaseComponentClient();
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [signupUsername, setSignupUsername] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
+        password: loginPassword,
+      });
+      if (error) throw error;
+      router.push("/dashboard");
+    } catch (error: any) {
+      setError(error.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex">
@@ -117,8 +139,13 @@ export default function LoginPage() {
                   </div>
                 </div>
                 
-                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white h-10 mt-2">
-                  Sign In
+                {error && <p className="text-sm text-red-600">{error}</p>}
+                <Button 
+                  onClick={handleLogin}
+                  disabled={loading}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white h-10 mt-2"
+                >
+                  {loading ? "Signing in..." : "Sign In"}
                 </Button>
               </TabsContent>
               
