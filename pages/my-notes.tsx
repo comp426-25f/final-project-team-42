@@ -123,7 +123,11 @@ export default function MyNotesPage() {
       const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
       const reader = new FileReader();
       const base64 = await new Promise<string>((resolve) => {
-        reader.onloadend = () => resolve((reader.result as string).split(",")[1]);
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          // Send the full data URL (includes the base64 prefix)
+          resolve(result);
+        };
         reader.readAsDataURL(file);
       });
       const response = await fetch("/api/upload", {
