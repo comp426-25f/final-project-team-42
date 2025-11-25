@@ -137,13 +137,22 @@ export default function MyNotesPage() {
       });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-        console.error("Upload failed:", errorData);
-        throw new Error(errorData.error || "Upload failed");
+        let errorMessage = "Upload failed";
+        try {
+          const errorData = await response.json();
+          console.error("Upload failed with data:", errorData);
+          errorMessage = errorData.error || errorData.message || "Upload failed";
+        } catch (e) {
+          const text = await response.text();
+          console.error("Upload failed with text:", text);
+          errorMessage = text || `HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
       
-      const { url } = await response.json();
-      return url;
+      const data = await response.json();
+      console.log("Upload successful:", data);
+      return data.url;
     } catch (error) {
       console.error("Upload error:", error);
       alert("Failed to upload file");
