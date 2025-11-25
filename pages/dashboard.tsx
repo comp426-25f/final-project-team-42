@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/router";
 import { createSupabaseComponentClient } from "@/utils/supabase/clients/component";
-import { Book, Home, Users, Sparkles, MessageSquare, FileText, Settings, Search, Plus, Flame, TrendingUp, PanelLeft, ChevronRight, Share2, Copy } from "lucide-react";
+import { Book, Home, Users, Sparkles, MessageSquare, FileText, Settings, Search, Plus, Flame, TrendingUp, PanelLeft, ChevronRight, Share2, Copy, Trash2 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,6 +90,8 @@ export default function DashboardPage() {
   const [joinCode, setJoinCode] = useState("");
   const [currentGroupCode, setCurrentGroupCode] = useState("");
   const [isViewCodeOpen, setIsViewCodeOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [groupToDelete, setGroupToDelete] = useState<number | null>(null);
   const [studyStreak, setStudyStreak] = useState(0);
 
   const groupColors = ["bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500", "bg-pink-500", "bg-yellow-500", "bg-red-500", "bg-indigo-500"];
@@ -203,6 +205,37 @@ export default function DashboardPage() {
       console.error("Error fetching join code:", error);
       alert("Failed to fetch the join code. Please try again later.");
     }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!groupToDelete) return;
+    
+    try {
+      await supabase.from('messages').delete().eq('group_id', groupToDelete);
+      await supabase.from('memberships').delete().eq('group_id', groupToDelete);
+      
+      // Then delete the group
+      const { error } = await supabase
+        .from('groups')
+        .delete()
+        .eq('id', groupToDelete);
+      
+      if (error) throw error;
+      
+      // Refresh the groups list
+      await fetchGroups();
+      setIsDeleteDialogOpen(false);
+      setGroupToDelete(null);
+    } catch (error) {
+      console.error("Error deleting group:", error);
+      alert("Failed to delete the group. Please try again later.");
+    }
+  };
+  
+  const confirmDeleteGroup = (groupId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setGroupToDelete(groupId);
+    setIsDeleteDialogOpen(true);
   };
 
   const filteredStudyGroups = useMemo(() => {
@@ -549,18 +582,28 @@ export default function DashboardPage() {
                             <p className="text-xs text-gray-500 dark:text-gray-500">
                               Last activity: {group.lastActivity}
                             </p>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-xs h-6 px-2"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewJoinCode(group.id);
-                              }}
-                            >
-                              <Share2 className="h-3.5 w-3.5 mr-1" />
-                              Invite
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-xs h-6 px-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewJoinCode(group.id);
+                                }}
+                              >
+                                <Share2 className="h-3.5 w-3.5 mr-1" />
+                                Invite
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-xs h-6 px-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                onClick={(e) => confirmDeleteGroup(group.id, e)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -708,7 +751,7 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* View Join Code Dialog */}
+      {/* View Join Code Overlay */}
       <Dialog open={isViewCodeOpen} onOpenChange={setIsViewCodeOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -736,6 +779,35 @@ export default function DashboardPage() {
           </div>
           <DialogFooter>
             <Button onClick={() => setIsViewCodeOpen(false)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Group Confirmation Overlay */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Delete Group</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this group? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setGroupToDelete(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteGroup}
+            >
+              Delete Group
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
