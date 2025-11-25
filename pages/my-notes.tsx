@@ -74,7 +74,7 @@ export default function MyNotesPage() {
         .order("created_at", { ascending: false });
       if (error) throw error;
       
-      const formattedDocs: Document[] = (data || []).map(doc => ({
+      const formattedDocs: Document[] = (data || []).map((doc: any) => ({
         ...doc,
         title: doc.message?.substring(0, 50) || 'Untitled Document',
         file_type: getFileType(doc.attachment_url),
@@ -299,7 +299,7 @@ export default function MyNotesPage() {
               <Input
                 placeholder="Search documents..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                 className="pl-10"
               />
             </div>
@@ -323,7 +323,7 @@ export default function MyNotesPage() {
         </div>
 
         {/* Tabs */}
-        <Tabs value={filterType} onValueChange={(v) => setFilterType(v as FilterType)} className="flex-1 flex flex-col">
+        <Tabs value={filterType} onValueChange={(v: string) => setFilterType(v as FilterType)} className="flex-1 flex flex-col">
           <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4">
             <TabsList className="bg-transparent">
               <TabsTrigger value="all">All Documents</TabsTrigger>
@@ -515,7 +515,7 @@ export default function MyNotesPage() {
                 id="title"
                 placeholder="Document title..."
                 value={newDoc.title}
-                onChange={(e) => setNewDoc({ ...newDoc, title: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewDoc({ ...newDoc, title: e.target.value })}
               />
             </div>
             <div className="space-y-2">
@@ -524,7 +524,7 @@ export default function MyNotesPage() {
                 id="message"
                 placeholder="Add a description..."
                 value={newDoc.message}
-                onChange={(e) => setNewDoc({ ...newDoc, message: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewDoc({ ...newDoc, message: e.target.value })}
                 rows={3}
               />
             </div>
