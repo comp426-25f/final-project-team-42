@@ -257,10 +257,10 @@ export default function MyNotesPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <div className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-300`}>
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex flex-col transition-all duration-300`}>
+        <div className="p-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <Book className="h-5 w-5 text-white" />
@@ -272,7 +272,7 @@ export default function MyNotesPage() {
         <nav className="flex-1 p-4 space-y-1">
           <button
             onClick={() => router.push("/dashboard")}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700"
           >
             <Home className="h-5 w-5" />
             {!isSidebarCollapsed && <span>Dashboard</span>}
@@ -284,18 +284,18 @@ export default function MyNotesPage() {
             <FileText className="h-5 w-5" />
             {!isSidebarCollapsed && <span>My Documents</span>}
           </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
+          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700">
             <Users className="h-5 w-5" />
             {!isSidebarCollapsed && <span>Study Groups</span>}
           </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
+          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700">
             <MessageSquare className="h-5 w-5" />
             {!isSidebarCollapsed && <span>Group Chat</span>}
           </button>
         </nav>
 
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
+        <div className="p-4 border-t border-gray-200">
+          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700">
             <Settings className="h-5 w-5" />
             {!isSidebarCollapsed && <span>Settings</span>}
           </button>
@@ -305,11 +305,11 @@ export default function MyNotesPage() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
+        <div className="bg-white border-b border-gray-200 p-4">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Documents</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Organize and share your study materials</p>
+              <h1 className="text-2xl font-bold text-gray-900">My Documents</h1>
+              <p className="text-sm text-gray-600">Organize and share your study materials</p>
             </div>
             <Button onClick={() => setIsNewDocOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" />
@@ -349,7 +349,7 @@ export default function MyNotesPage() {
 
         {/* Tabs */}
         <Tabs value={filterType} onValueChange={(v: string) => setFilterType(v as FilterType)} className="flex-1 flex flex-col">
-          <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4">
+          <div className="bg-white border-b border-gray-200 px-4">
             <TabsList className="bg-transparent">
               <TabsTrigger value="all">All Documents</TabsTrigger>
               <TabsTrigger value="personal">Personal</TabsTrigger>
@@ -366,8 +366,8 @@ export default function MyNotesPage() {
             ) : filteredDocuments.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-center">
                 <FileText className="h-16 w-16 text-gray-300 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No documents found</h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No documents found</h3>
+                <p className="text-gray-600 mb-4">
                   {searchQuery ? "Try adjusting your search" : "Create your first document to get started"}
                 </p>
                 {!searchQuery && (
@@ -423,7 +423,7 @@ export default function MyNotesPage() {
                       </div>
 
                       {doc.attachment_url && doc.file_type === 'image' && (
-                        <div className="mb-3 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
+                        <div className="mb-3 rounded-lg overflow-hidden bg-gray-100">
                           <img 
                             src={doc.attachment_url} 
                             alt={doc.title} 
@@ -433,7 +433,7 @@ export default function MyNotesPage() {
                       )}
 
                       {doc.message && doc.message !== doc.title && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
                           {doc.message}
                         </p>
                       )}
@@ -467,7 +467,7 @@ export default function MyNotesPage() {
             ) : (
               <div className="space-y-2">
                 {filteredDocuments.map((doc) => (
-                  <Card key={doc.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                  <Card key={doc.id} className="hover:bg-gray-50 transition-colors cursor-pointer">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-4">
                         <div className="flex-shrink-0">
