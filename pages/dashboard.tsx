@@ -63,7 +63,7 @@ export default function DashboardPage() {
         `);
       if (error) throw error;
       
-      const formattedGroups: StudyGroup[] = (data || []).map((group: any) => ({
+      const formattedGroups: StudyGroup[] = (data || []).map((group: { id: number; name: string; description: string | null; memberships?: { count: number }[]; messages?: { count: number }[] }) => ({
         id: group.id,
         name: group.name,
         description: group.description || "",
@@ -88,7 +88,7 @@ export default function DashboardPage() {
   const [groupImagePreview, setGroupImagePreview] = useState<string | null>(null);
   const [isJoinGroupOpen, setIsJoinGroupOpen] = useState(false);
   const [joinCode, setJoinCode] = useState("");
-  const [studyStreak, setStudyStreak] = useState(0);
+  const [studyStreak] = useState(0);
 
   const groupColors = ["bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500", "bg-pink-500", "bg-yellow-500", "bg-red-500", "bg-indigo-500"];
 
@@ -132,7 +132,7 @@ export default function DashboardPage() {
       }
 
       // Create the group
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("groups")
         .insert({
           name: `${course} - ${groupName}`,
@@ -153,9 +153,9 @@ export default function DashboardPage() {
       setCourse("");
       setDescription("");
       setGroupImagePreview(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating group:", error);
-      alert(`Failed to create group: ${error.message || JSON.stringify(error)}`);
+      alert(`Failed to create group: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
     }
   };
 

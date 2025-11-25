@@ -51,8 +51,8 @@ export default function SignupPage() {
       }
       
       router.push("/dashboard");
-    } catch (error: any) {
-      setError(error.message || "Signup failed");
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "Signup failed");
     } finally {
       setLoading(false);
     }
