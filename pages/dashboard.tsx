@@ -54,25 +54,60 @@ export default function DashboardPage() {
 
   const fetchGroups = async () => {
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1; // Fallback to test user
+
+      // Fetch only groups where user is a member
       const { data, error } = await supabase
-        .from("groups")
+        .from("memberships")
         .select(`
-          *,
-          memberships(count),
-          messages(count)
-        `);
+          group_id,
+          groups (
+            id,
+            name,
+            description,
+            owner_id,
+            is_private,
+            created_at
+          )
+        `)
+        .eq("user_id", userId);
+      
       if (error) throw error;
       
-      const formattedGroups: StudyGroup[] = (data || []).map((group: { id: number; name: string; description: string | null; memberships?: { count: number }[]; messages?: { count: number }[] }) => ({
-        id: group.id,
-        name: group.name,
-        description: group.description || "",
-        members: group.memberships?.[0]?.count || 0,
-        resources: group.messages?.[0]?.count || 0,
-        lastActivity: "Recently",
-        color: groupColors[group.id % groupColors.length],
-        imageUrl: null,
-      }));
+      // Get member and message counts for each group
+      const groupsWithCounts = await Promise.all(
+        (data || []).map(async (membership: any) => {
+          const group = membership.groups;
+          if (!group) return null;
+
+          // Get member count
+          const { count: memberCount } = await supabase
+            .from("memberships")
+            .select("*", { count: "exact", head: true })
+            .eq("group_id", group.id);
+
+          // Get message count
+          const { count: messageCount } = await supabase
+            .from("messages")
+            .select("*", { count: "exact", head: true })
+            .eq("group_id", group.id);
+
+          return {
+            id: group.id,
+            name: group.name,
+            description: group.description || "",
+            members: memberCount || 0,
+            resources: messageCount || 0,
+            lastActivity: "Recently",
+            color: groupColors[group.id % groupColors.length],
+            imageUrl: null,
+          };
+        })
+      );
+
+      const formattedGroups: StudyGroup[] = groupsWithCounts.filter((g) => g !== null) as StudyGroup[];
       setStudyGroups(formattedGroups);
     } catch (error) {
       console.error("Error fetching groups:", error);
@@ -131,19 +166,37 @@ export default function DashboardPage() {
         });
       }
 
+      // Get current user ID
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
+
       // Create the group
-      const { error } = await supabase
+      const { data: newGroup, error: groupError } = await supabase
         .from("groups")
         .insert({
           name: `${course} - ${groupName}`,
           description: description,
-          owner_id: 1,
+          owner_id: userId,
           is_private: false,
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (groupError) throw groupError;
+
+      // Automatically add the creator as a member
+      if (newGroup) {
+        const { error: membershipError } = await supabase
+          .from("memberships")
+          .insert({
+            user_id: userId,
+            group_id: newGroup.id,
+          });
+
+        if (membershipError) {
+          console.error("Error adding creator as member:", membershipError);
+        }
+      }
 
       // Refresh groups list
       fetchGroups();
@@ -159,10 +212,73 @@ export default function DashboardPage() {
     }
   };
 
-  const handleJoinGroup = () => {
-    console.log("Joining group with code:", joinCode);
-    setIsJoinGroupOpen(false);
-    setJoinCode("");
+  const handleJoinGroup = async () => {
+    if (!joinCode.trim()) {
+      alert("Please enter a group ID");
+      return;
+    }
+
+    try {
+      // Get current user ID
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
+
+      // Parse group ID from join code
+      const groupId = parseInt(joinCode.trim());
+      
+      if (isNaN(groupId)) {
+        alert("Invalid group ID. Please enter a number.");
+        return;
+      }
+
+      // Check if group exists
+      const { data: group, error: groupError } = await supabase
+        .from("groups")
+        .select("id, name")
+        .eq("id", groupId)
+        .single();
+
+      if (groupError || !group) {
+        alert("Group not found. Please check the group ID.");
+        return;
+      }
+
+      // Check if user is already a member
+      const { data: existingMembership } = await supabase
+        .from("memberships")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("group_id", groupId)
+        .single();
+
+      if (existingMembership) {
+        alert("You are already a member of this group!");
+        setIsJoinGroupOpen(false);
+        setJoinCode("");
+        return;
+      }
+
+      // Add user as a member
+      const { error: membershipError } = await supabase
+        .from("memberships")
+        .insert({
+          user_id: userId,
+          group_id: groupId,
+        });
+
+      if (membershipError) throw membershipError;
+
+      alert(`Successfully joined "${group.name}"!`);
+      
+      // Refresh groups list
+      fetchGroups();
+      
+      setIsJoinGroupOpen(false);
+      setJoinCode("");
+    } catch (error: unknown) {
+      console.error("Error joining group:", error);
+      alert(`Failed to join group: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
   };
 
   const filteredStudyGroups = useMemo(() => {
@@ -492,8 +608,11 @@ export default function DashboardPage() {
                           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
                             {group.name}
                           </h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
                             {group.description}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500 mb-3">
+                            Group ID: {group.id}
                           </p>
                           <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
                             <div className="flex items-center gap-1">
