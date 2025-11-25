@@ -2,6 +2,9 @@ import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { createSupabaseComponentClient } from "@/utils/supabase/clients/component";
 
+/**
+ * Landing page that redirects users based on authentication status
+ */
 export default function HomePage() {
   const router = useRouter();
   const supabase = createSupabaseComponentClient();
