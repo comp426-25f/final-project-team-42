@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/router";
 import { createSupabaseComponentClient } from "@/utils/supabase/clients/component";
-import { Book, Home, Users, Sparkles, MessageSquare, FileText, Settings, Search, Plus, Flame, TrendingUp, PanelLeft, ChevronRight } from "lucide-react";
+import { Book, Home, Users, Sparkles, MessageSquare, FileText, Settings, Search, Plus, Flame, TrendingUp, PanelLeft, ChevronRight, Share2, Copy } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -88,6 +88,8 @@ export default function DashboardPage() {
   const [groupImagePreview, setGroupImagePreview] = useState<string | null>(null);
   const [isJoinGroupOpen, setIsJoinGroupOpen] = useState(false);
   const [joinCode, setJoinCode] = useState("");
+  const [currentGroupCode, setCurrentGroupCode] = useState("");
+  const [isViewCodeOpen, setIsViewCodeOpen] = useState(false);
   const [studyStreak, setStudyStreak] = useState(0);
 
   const groupColors = ["bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500", "bg-pink-500", "bg-yellow-500", "bg-red-500", "bg-indigo-500"];
@@ -159,10 +161,48 @@ export default function DashboardPage() {
     }
   };
 
-  const handleJoinGroup = () => {
-    console.log("Joining group with code:", joinCode);
-    setIsJoinGroupOpen(false);
-    setJoinCode("");
+  const handleJoinGroup = async () => {
+    try {
+      setIsJoinGroupOpen(false);
+      setJoinCode("");
+    } catch (error) {
+      console.error("Error joining group:", error);
+    }
+  };
+
+  const handleViewJoinCode = async (groupId: number) => {
+    try {
+      // Fetch the join code from the groups table
+      const { data: group, error } = await supabase
+        .from('groups')
+        .select('join_code')
+        .eq('id', groupId)
+        .single();
+
+      if (error) throw error;
+      if (!group) throw new Error('Group not found');
+
+      // If no join code exists, generate one and save it
+      if (!group.join_code) {
+        const newCode = `GRP-${groupId.toString().padStart(4, '0')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        
+        // Save the new code to the database
+        const { error: updateError } = await supabase
+          .from('groups')
+          .update({ join_code: newCode })
+          .eq('id', groupId);
+          
+        if (updateError) throw updateError;
+        setCurrentGroupCode(newCode);
+      } else {
+        setCurrentGroupCode(group.join_code);
+      }
+      
+      setIsViewCodeOpen(true);
+    } catch (error) {
+      console.error("Error fetching join code:", error);
+      alert("Failed to fetch the join code. Please try again later.");
+    }
   };
 
   const filteredStudyGroups = useMemo(() => {
@@ -505,9 +545,23 @@ export default function DashboardPage() {
                               <span>{group.resources} resources</span>
                             </div>
                           </div>
-                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-3">
-                            Last activity: {group.lastActivity}
-                          </p>
+                          <div className="flex justify-between items-center mt-3">
+                            <p className="text-xs text-gray-500 dark:text-gray-500">
+                              Last activity: {group.lastActivity}
+                            </p>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-xs h-6 px-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewJoinCode(group.id);
+                              }}
+                            >
+                              <Share2 className="h-3.5 w-3.5 mr-1" />
+                              Invite
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
@@ -650,6 +704,38 @@ export default function DashboardPage() {
             >
               Join Group
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Join Code Dialog */}
+      <Dialog open={isViewCodeOpen} onOpenChange={setIsViewCodeOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Invite to Group</DialogTitle>
+            <DialogDescription>
+              Share this code with others to let them join your group
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+              <code className="font-mono text-lg font-medium">
+                {currentGroupCode}
+              </code>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(currentGroupCode);
+                }}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copy
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsViewCodeOpen(false)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
