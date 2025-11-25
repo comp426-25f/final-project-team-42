@@ -261,31 +261,31 @@ export default function MyNotesPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <Collapsible
-        open={!isSidebarCollapsed}
-        onOpenChange={(open: boolean) => setIsSidebarCollapsed(!open)}
-        className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} h-full bg-white border-r border-gray-200 flex flex-col`}
-      >
-        {/* Collapse Trigger */}
-        <div className="absolute right-4 top-6 z-10">
-          <CollapsibleTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 p-0 bg-white border border-gray-200"
-              title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {isSidebarCollapsed ? (
-                <ChevronRight className="h-4 w-4" />
-              ) : (
-                <PanelLeft className="h-4 w-4" />
-              )}
-              <span className="sr-only">Toggle sidebar</span>
-            </Button>
-          </CollapsibleTrigger>
-        </div>
+    <div className="min-h-screen flex bg-gray-50">
+      <aside className="fixed left-0 top-0 h-screen flex flex-col transition-all duration-300 z-50">
+        <Collapsible
+          open={!isSidebarCollapsed}
+          onOpenChange={(open: boolean) => setIsSidebarCollapsed(!open)}
+          className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} h-full bg-white border-r border-gray-200 flex flex-col`}
+        >
+          {/* Collapse Trigger */}
+          <div className="absolute right-4 top-6 z-10">
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 p-0 bg-white border border-gray-200"
+                title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {isSidebarCollapsed ? (
+                  <ChevronRight className="h-4 w-4" />
+                ) : (
+                  <PanelLeft className="h-4 w-4" />
+                )}
+                <span className="sr-only">Toggle sidebar</span>
+              </Button>
+            </CollapsibleTrigger>
+          </div>
 
         <CollapsibleContent className="flex-1 flex flex-col h-full">
           <div>
@@ -400,10 +400,11 @@ export default function MyNotesPage() {
             </div>
           )}
         </CollapsibleContent>
-      </Collapsible>
+        </Collapsible>
+      </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
         {/* Header */}
         <div className="bg-white border-b border-gray-200 p-4">
           <div className="flex items-center justify-between mb-4">
