@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import { Book, FileText, Upload, File, Image as ImageIcon, X, Clock, Search, Plus, Share2, Users, Sparkles, MessageSquare, Settings, Home } from "lucide-react";
+import { Book, FileText, Upload, File, Image as ImageIcon, X, Clock, Search, Plus, Share2, Users, Sparkles, MessageSquare, Settings, Home, PanelLeft, ChevronRight } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,15 +34,32 @@ export default function MyNotesPage() {
   const [newNote, setNewNote] = useState({ message: "" });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [userName, setUserName] = useState("User");
+  const [userEmail, setUserEmail] = useState("");
 
   useEffect(() => {
     fetchNotes();
+    fetchUser();
     const channel = supabase
       .channel("notes-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => fetchNotes())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
+
+  const fetchUser = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const name = user.user_metadata?.name || user.email?.split('@')[0] || "User";
+        setUserName(name);
+        setUserEmail(user.email || "");
+      }
+    } catch (error) {
+      console.error("Error fetching user:", error);
+    }
+  };
 
   const fetchNotes = async () => {
     try {
@@ -156,36 +174,145 @@ export default function MyNotesPage() {
 
   return (
     <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
-      <aside className="w-64 h-screen fixed left-0 top-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Book className="h-6 w-6 text-white" />
+      <aside className="fixed left-0 top-0 h-screen flex flex-col transition-all duration-300 z-50">
+        <Collapsible
+          open={!isSidebarCollapsed}
+          onOpenChange={(open: boolean) => setIsSidebarCollapsed(!open)}
+          className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col`}
+        >
+          {/* Collapse Trigger */}
+          <div className="absolute right-4 top-6 z-10">
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 p-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {isSidebarCollapsed ? (
+                  <ChevronRight className="h-4 w-4" />
+                ) : (
+                  <PanelLeft className="h-4 w-4" />
+                )}
+                <span className="sr-only">Toggle sidebar</span>
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+
+          <CollapsibleContent className="flex-1 flex flex-col h-full">
+            <div>
+              {/* Logo */}
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-[#4B9CD3] rounded flex items-center justify-center flex-shrink-0">
+                    <Book className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="text-xl font-bold text-[#13294B] dark:text-white whitespace-nowrap">StudyBuddy</span>
+                </div>
+              </div>
+
+              {/* Menu */}
+              <nav className="p-4 space-y-6">
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                    Menu
+                  </h3>
+                  <ul className="space-y-1">
+                    <li>
+                      <button
+                        onClick={() => router.push("/dashboard")}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        title="Dashboard"
+                      >
+                        <Home className="h-5 w-5 flex-shrink-0" />
+                        <span>Dashboard</span>
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => router.push("/study-groups")}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        title="Study Groups"
+                      >
+                        <Users className="h-5 w-5 flex-shrink-0" />
+                        <span>Study Groups</span>
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => router.push("/ai-assistant")}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        title="AI Assistant"
+                      >
+                        <Sparkles className="h-5 w-5 flex-shrink-0" />
+                        <span>AI Assistant</span>
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => router.push("/group-chat")}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        title="Group Chat"
+                      >
+                        <MessageSquare className="h-5 w-5 flex-shrink-0" />
+                        <span>Group Chat</span>
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-blue-600 dark:text-blue-400 font-medium"
+                        title="My Notes"
+                      >
+                        <FileText className="h-5 w-5 flex-shrink-0" />
+                        <span>My Notes</span>
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Account */}
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                    Account
+                  </h3>
+                  <ul className="space-y-1">
+                    <li>
+                      <button
+                        onClick={() => router.push("/settings")}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        title="Settings"
+                      >
+                        <Settings className="h-5 w-5 flex-shrink-0" />
+                        <span>Settings</span>
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              </nav>
             </div>
-            <span className="text-xl font-bold">StudyBuddy</span>
-          </div>
-        </div>
-        <nav className="flex-1 p-4">
-          <div className="mb-6">
-            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Menu</p>
-            <ul className="space-y-1">
-              <li><button onClick={() => router.push("/dashboard")} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><Home className="h-5 w-5" /><span>Dashboard</span></button></li>
-              <li><button onClick={() => router.push("/study-groups")} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><Users className="h-5 w-5" /><span>Study Groups</span></button></li>
-              <li><button onClick={() => router.push("/ai-assistant")} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><Sparkles className="h-5 w-5" /><span>AI Assistant</span></button></li>
-              <li><button onClick={() => router.push("/group-chat")} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><MessageSquare className="h-5 w-5" /><span>Group Chat</span></button></li>
-              <li><button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-blue-600 dark:text-blue-400 font-medium"><FileText className="h-5 w-5" /><span>My Notes</span></button></li>
-            </ul>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Account</p>
-            <ul className="space-y-1">
-              <li><button onClick={() => router.push("/settings")} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><Settings className="h-5 w-5" /><span>Settings</span></button></li>
-            </ul>
-          </div>
-        </nav>
+
+            <div className="mt-auto p-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    {userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    {userName}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    {userEmail}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </aside>
 
-      <main className="flex-1 ml-64 p-8">
+      <main className={`flex-1 overflow-y-auto p-8 transition-all duration-300 ${isSidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-3xl font-bold">My Notes</h1>
