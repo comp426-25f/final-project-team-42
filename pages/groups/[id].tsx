@@ -36,7 +36,7 @@ type GroupMessage = {
   author: {
     name: string | null;
     avatar_url: string | null;
-  }[]; 
+  }[];
 };
 
 const PAGE_SIZE = 25;
@@ -102,7 +102,7 @@ export default function GroupPage({ group, user, authorId }: GroupPageProps) {
 
       const transformedData = (data ?? []).map(msg => ({
         ...msg,
-        author: Array.isArray(msg.author) ? msg.author[0] : msg.author
+        author: Array.isArray(msg.author) ? msg.author : [msg.author].filter(Boolean)
       }));
 
       setMessages(transformedData as GroupMessage[]);
@@ -142,10 +142,10 @@ export default function GroupPage({ group, user, authorId }: GroupPageProps) {
 
       const newMessages = (data ?? []).map(msg => ({
         ...msg,
-        author: Array.isArray(msg.author) ? msg.author[0] : msg.author
-      })) as GroupMessage[];
+        author: Array.isArray(msg.author) ? msg.author : [msg.author].filter(Boolean)
+      }));
 
-      setMessages((prev) => [...prev, ...newMessages]);
+      setMessages((prev) => [...prev, ...(newMessages as GroupMessage[])]);
       setCursor((prev) => prev + newMessages.length);
       if (newMessages.length < PAGE_SIZE) {
         setHasMore(false);

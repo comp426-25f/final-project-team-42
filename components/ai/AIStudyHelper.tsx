@@ -3,7 +3,7 @@
  * Allows users to paste notes to get AI-generated summaries, quizzes, and flashcards
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from "../ui/dialog";
 import { Button } from "../ui/button";
+import { Input } from "../ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
@@ -52,6 +53,7 @@ export default function AIStudyHelper() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<AIResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [flippedCards, setFlippedCards] = useState<Record<number, boolean>>({});
   const [provider, setProvider] = useState<"openai" | "gemini">("gemini");
@@ -200,7 +202,6 @@ export default function AIStudyHelper() {
    */
   const handleReset = () => {
     setInputText("");
-    setUploadedFileName("");
     setResult(null);
     setError("");
     setSelectedAnswers({});
