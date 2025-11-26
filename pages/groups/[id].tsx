@@ -100,9 +100,14 @@ export default function GroupPage({ group, user, authorId }: GroupPageProps) {
 
       if (error) throw error;
 
-      setMessages((data ?? []) as GroupMessage[]);
-      setCursor(data ? data.length : 0);
-      setHasMore((data ?? []).length === PAGE_SIZE);
+      const transformedData = (data ?? []).map(msg => ({
+        ...msg,
+        author: Array.isArray(msg.author) ? msg.author[0] : msg.author
+      }));
+
+      setMessages(transformedData as GroupMessage[]);
+      setCursor(transformedData.length);
+      setHasMore(transformedData.length === PAGE_SIZE);
     } catch (err) {
       console.error("Error loading messages:", err);
     } finally {
@@ -135,7 +140,11 @@ export default function GroupPage({ group, user, authorId }: GroupPageProps) {
 
       if (error) throw error;
 
-      const newMessages = (data ?? []) as GroupMessage[];
+      const newMessages = (data ?? []).map(msg => ({
+        ...msg,
+        author: Array.isArray(msg.author) ? msg.author[0] : msg.author
+      })) as GroupMessage[];
+
       setMessages((prev) => [...prev, ...newMessages]);
       setCursor((prev) => prev + newMessages.length);
       if (newMessages.length < PAGE_SIZE) {
