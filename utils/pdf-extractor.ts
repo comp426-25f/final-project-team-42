@@ -15,8 +15,9 @@ export async function extractTextFromPDF(file: File): Promise<string> {
   }
 
   try {
-    // Dynamically import pdfjs-dist only when needed (client-side only)
-    const pdfjsLib = await import("pdfjs-dist");
+    // Dynamically import the legacy build for better bundler compatibility
+    const pdfjsLibModule = await import("pdfjs-dist/legacy/build/pdf.js");
+    const pdfjsLib = (pdfjsLibModule as any).default || pdfjsLibModule;
 
     // Configure PDF.js worker
     pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
