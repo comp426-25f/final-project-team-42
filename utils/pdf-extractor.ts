@@ -15,12 +15,14 @@ export async function extractTextFromPDF(file: File): Promise<string> {
   }
 
   try {
-    // Dynamically import the legacy build for better bundler compatibility
-    const pdfjsLibModule = await import("pdfjs-dist/legacy/build/pdf.js");
+    // Use legacy ESM build to keep worker and main script aligned.
+    const pdfjsLibModule = await import("pdfjs-dist/legacy/build/pdf.mjs");
     const pdfjsLib = (pdfjsLibModule as any).default || pdfjsLibModule;
 
-    // Configure PDF.js worker
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+    const workerSrcModule = await import(
+      "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url"
+    );
+    pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrcModule.default;
 
     // Convert file to ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();

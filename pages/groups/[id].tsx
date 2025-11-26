@@ -39,6 +39,23 @@ type GroupMessage = {
   } | null;
 };
 
+type RawGroupMessage = Omit<GroupMessage, "author"> & {
+  author: GroupMessage["author"] | GroupMessage["author"][] | null;
+};
+
+// Supabase returns the joined `author` column as an array; flatten it here.
+const normalizeGroupMessage = (msg: RawGroupMessage): GroupMessage => {
+  const authorEntry = Array.isArray(msg.author) ? msg.author[0] ?? null : msg.author;
+
+  return {
+    id: msg.id,
+    message: msg.message,
+    attachment_url: msg.attachment_url,
+    created_at: msg.created_at,
+    author: authorEntry,
+  };
+};
+
 const PAGE_SIZE = 25;
 
 const uploadPostFileToSupabase = async (
@@ -100,7 +117,11 @@ export default function GroupPage({ group, user, authorId }: GroupPageProps) {
 
       if (error) throw error;
 
-      setMessages((data ?? []) as GroupMessage[]);
+      const transformedMessages = ((data ?? []) as RawGroupMessage[]).map(
+        normalizeGroupMessage,
+      );
+
+      setMessages(transformedMessages);
       setCursor(data ? data.length : 0);
       setHasMore((data ?? []).length === PAGE_SIZE);
     } catch (err) {
@@ -135,7 +156,10 @@ export default function GroupPage({ group, user, authorId }: GroupPageProps) {
 
       if (error) throw error;
 
-      const newMessages = (data ?? []) as GroupMessage[];
+      const newMessages = ((data ?? []) as RawGroupMessage[]).map(
+        normalizeGroupMessage,
+      );
+
       setMessages((prev) => [...prev, ...newMessages]);
       setCursor((prev) => prev + newMessages.length);
       if (newMessages.length < PAGE_SIZE) {

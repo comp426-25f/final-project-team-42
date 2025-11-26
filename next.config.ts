@@ -17,8 +17,14 @@ const nextConfig: NextConfig = {
     if (!isServer) {
       config.resolve.alias.canvas = false;
       config.resolve.alias.encoding = false;
+      config.resolve.alias["pdfjs-dist/legacy/build/pdf.js"] = "pdfjs-dist/legacy/build/pdf.mjs";
+      config.resolve.alias["pdfjs-dist/build/pdf.js"] = "pdfjs-dist/build/pdf.mjs";
+      config.resolve.alias["pdfjs-dist/legacy/build/pdf.worker.js"] =
+        "pdfjs-dist/legacy/build/pdf.worker.min.mjs";
+      config.resolve.alias["pdfjs-dist/build/pdf.worker.js"] =
+        "pdfjs-dist/build/pdf.worker.min.mjs";
     }
-    
+
     return config;
   },
   async headers() {
