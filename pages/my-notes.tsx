@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import AIStudyHelper from "@/components/ai/AIStudyHelper";
 
 interface Document {
   id: number;
@@ -412,10 +413,13 @@ export default function MyNotesPage() {
               <h1 className="text-2xl font-bold text-gray-900">My Documents</h1>
               <p className="text-sm text-gray-600">Organize and share your study materials</p>
             </div>
-            <Button onClick={() => setIsNewDocOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              New Document
-            </Button>
+            <div className="flex items-center gap-2">
+              <AIStudyHelper />
+              <Button onClick={() => setIsNewDocOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                New Document
+              </Button>
+            </div>
           </div>
 
           {/* Search and Filters */}
