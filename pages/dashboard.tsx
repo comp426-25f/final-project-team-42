@@ -107,6 +107,8 @@ export default function DashboardPage() {
     fetchUser();
     fetchDiscoverGroups();
     fetchRecentActivities();
+    fetchTotalResources();
+    calculateStudyStreak();
   }, []);
 
   const fetchUser = async () => {
@@ -162,13 +164,18 @@ export default function DashboardPage() {
             .eq("group_id", group.id);
 
           // Get message count and most recent message
-          const { count: messageCount, data: recentMessage } = await supabase
+          const { count: messageCount } = await supabase
+            .from("messages")
+            .select("*", { count: "exact", head: true })
+            .eq("group_id", group.id);
+
+          const { data: recentMessage } = await supabase
             .from("messages")
             .select("created_at")
             .eq("group_id", group.id)
             .order("created_at", { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
 
           // If no messages exist, use the group's creation time as last activity
           let lastActivity = new Date(group.created_at);
@@ -192,6 +199,10 @@ export default function DashboardPage() {
 
       const formattedGroups: StudyGroup[] = groupsWithCounts.filter((g) => g !== null) as StudyGroup[];
       setStudyGroups(formattedGroups);
+      
+      // Calculate total resources across all groups
+      const total = formattedGroups.reduce((sum, group) => sum + group.resources, 0);
+      setTotalResources(total);
     } catch (error) {
       console.error("Error fetching groups:", error);
     } finally {
@@ -237,13 +248,18 @@ export default function DashboardPage() {
             .eq("group_id", group.id);
 
           // Get message count and most recent message
-          const { count: messageCount, data: recentMessage } = await supabase
+          const { count: messageCount } = await supabase
+            .from("messages")
+            .select("*", { count: "exact", head: true })
+            .eq("group_id", group.id);
+
+          const { data: recentMessage } = await supabase
             .from("messages")
             .select("created_at")
             .eq("group_id", group.id)
             .order("created_at", { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
 
           // If no messages exist, use the group's creation time as last activity
           let lastActivity = new Date(group.created_at);
@@ -347,6 +363,95 @@ export default function DashboardPage() {
     }
   };
 
+  const fetchTotalResources = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
+
+      // Get all groups that the user is a member of
+      const { data: userMemberships } = await supabase
+        .from("memberships")
+        .select("group_id")
+        .eq("user_id", userId);
+
+      if (!userMemberships || userMemberships.length === 0) {
+        setTotalResources(0);
+        return;
+      }
+
+      const userGroupIds = userMemberships.map((m: any) => m.group_id);
+
+      // Get total message count across all user's groups
+      const { count: totalMessageCount } = await supabase
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .in("group_id", userGroupIds);
+
+      setTotalResources(totalMessageCount || 0);
+    } catch (error) {
+      console.error("Error fetching total resources:", error);
+    }
+  };
+
+  const calculateStudyStreak = async () => {
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
+
+      // Get storage key for this user's streak data
+      const streakKey = `studyStreak_${userId}`;
+      const lastVisitKey = `lastVisit_${userId}`;
+
+      // Get last visit date from localStorage
+      const lastVisitStr = typeof window !== 'undefined' ? localStorage.getItem(lastVisitKey) : null;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (!lastVisitStr) {
+        // First visit
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(lastVisitKey, today.toISOString());
+          localStorage.setItem(streakKey, '1');
+        }
+        setStudyStreak(1);
+        return;
+      }
+
+      const lastVisit = new Date(lastVisitStr);
+      lastVisit.setHours(0, 0, 0, 0);
+
+      const daysDiff = Math.floor((today.getTime() - lastVisit.getTime()) / (1000 * 60 * 60 * 24));
+      const currentStreak = typeof window !== 'undefined' ? parseInt(localStorage.getItem(streakKey) || '0') : 0;
+
+      let newStreak = currentStreak;
+
+      if (daysDiff === 0) {
+        // Keep current streak
+        newStreak = currentStreak;
+      } else if (daysDiff === 1) {
+        // Increment streak
+        newStreak = currentStreak + 1;
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(lastVisitKey, today.toISOString());
+          localStorage.setItem(streakKey, newStreak.toString());
+        }
+      } else {
+        // Streak broken
+        newStreak = 1;
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(lastVisitKey, today.toISOString());
+          localStorage.setItem(streakKey, '1');
+        }
+      }
+
+      setStudyStreak(newStreak);
+    } catch (error) {
+      console.error("Error calculating study streak:", error);
+      setStudyStreak(0);
+    }
+  };
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
@@ -356,6 +461,7 @@ export default function DashboardPage() {
   const [isJoinGroupOpen, setIsJoinGroupOpen] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [studyStreak, setStudyStreak] = useState(0);
+  const [totalResources, setTotalResources] = useState(0);
   const [joinCodeDialogOpen, setJoinCodeDialogOpen] = useState(false);
   const [selectedGroupForJoinCode, setSelectedGroupForJoinCode] = useState<number | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -438,6 +544,7 @@ export default function DashboardPage() {
 
       // Refresh groups list
       fetchGroups();
+      fetchTotalResources();
 
       setIsCreateGroupOpen(false);
       setGroupName("");
@@ -512,6 +619,7 @@ export default function DashboardPage() {
       fetchGroups();
       fetchDiscoverGroups();
       fetchRecentActivities();
+      fetchTotalResources();
       
       setIsJoinGroupOpen(false);
       setJoinCode("");
@@ -560,6 +668,7 @@ export default function DashboardPage() {
       fetchGroups();
       fetchDiscoverGroups();
       fetchRecentActivities();
+      fetchTotalResources();
 
       setDeleteDialogOpen(false);
       setSelectedGroupForDelete(null);
@@ -592,6 +701,7 @@ export default function DashboardPage() {
       fetchGroups();
       fetchDiscoverGroups();
       fetchRecentActivities();
+      fetchTotalResources();
 
       setLeaveDialogOpen(false);
       setSelectedGroupForLeave(null);
@@ -636,6 +746,7 @@ export default function DashboardPage() {
       fetchGroups();
       fetchDiscoverGroups();
       fetchRecentActivities();
+      fetchTotalResources();
     } catch (error: unknown) {
       console.error("Error joining group:", error);
       alert(`Failed to join group: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -932,13 +1043,13 @@ export default function DashboardPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 mb-2">
-                      Resources Shared
+                      Messages & Files
                     </p>
                     <p className="text-3xl font-bold text-gray-900">
-                      {studyGroups.reduce((sum, group) => sum + group.resources, 0)}
+                      {totalResources}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {studyGroups.length > 0 ? 'Notes, PDFs, and more' : 'No resources yet'}
+                      {totalResources > 0 ? 'Across all your groups' : 'No messages yet'}
                     </p>
                   </div>
                   <FileText className="h-6 w-6 text-gray-400 flex-shrink-0" />
