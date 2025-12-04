@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/router";
 import { createSupabaseComponentClient } from "@/utils/supabase/clients/component";
-import { Book, Home, Users, Sparkles, MessageSquare, FileText, Settings, Search, Plus, Flame, TrendingUp, PanelLeft, ChevronRight } from "lucide-react";
+import { Book, Home, Users, Sparkles, MessageSquare, FileText, Settings, Search, Plus, Flame, TrendingUp, PanelLeft, ChevronRight, Copy, Check, Share2, Clock, Trash2, LogOut } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,15 +11,54 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
+const formatTimeAgo = (date: Date): string => {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  const intervals = {
+    year: 31536000,
+    month: 2592000,
+    week: 604800,
+    day: 86400,
+    hour: 3600,
+    minute: 60
+  };
+
+  if (diffInSeconds < 60) return 'Just now';
+  if (diffInSeconds < 3600) {
+    const mins = Math.floor(diffInSeconds / 60);
+    return `${mins} ${mins === 1 ? 'min' : 'mins'} ago`;
+  }
+  if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+  }
+  if (diffInSeconds < 604800) {
+    const days = Math.floor(diffInSeconds / 86400);
+    return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+  }
+  if (diffInSeconds < 2592000) {
+    const weeks = Math.floor(diffInSeconds / 604800);
+    return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+  }
+  if (diffInSeconds < 31536000) {
+    const months = Math.floor(diffInSeconds / 2592000);
+    return `${months} ${months === 1 ? 'month' : 'months'} ago`;
+  }
+  const years = Math.floor(diffInSeconds / 31536000);
+  return `${years} ${years === 1 ? 'year' : 'years'} ago`;
+};
+
 interface StudyGroup {
   id: number;
   name: string;
   description: string;
   members: number;
   resources: number;
-  lastActivity: string;
+  lastActivity: Date;
   color: string;
   imageUrl: string | null;
+  owner_id: number;
 }
 
 const initialStudyGroups: StudyGroup[] = [];
@@ -29,13 +68,28 @@ export default function DashboardPage() {
   const supabase = createSupabaseComponentClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [studyGroups, setStudyGroups] = useState<StudyGroup[]>(initialStudyGroups);
+  const [discoverGroups, setDiscoverGroups] = useState<StudyGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [discoverLoading, setDiscoverLoading] = useState(false);
   const [userName, setUserName] = useState("User");
   const [userEmail, setUserEmail] = useState("");
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [copiedGroupId, setCopiedGroupId] = useState<number | null>(null);
+
+  // Update current time every minute for relative time display
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); 
+    
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     fetchGroups();
     fetchUser();
+    fetchDiscoverGroups();
   }, []);
 
   const fetchUser = async () => {
@@ -46,6 +100,8 @@ export default function DashboardPage() {
         const name = user.user_metadata?.name || user.email?.split('@')[0] || "User";
         setUserName(name);
         setUserEmail(user.email || "");
+        const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
+        setCurrentUserId(userId);
       }
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -76,7 +132,7 @@ export default function DashboardPage() {
       
       if (error) throw error;
       
-      // Get member and message counts for each group
+      // Get member and message counts for each group along with last activity
       const groupsWithCounts = await Promise.all(
         (data || []).map(async (membership: any) => {
           const group = membership.groups;
@@ -88,11 +144,20 @@ export default function DashboardPage() {
             .select("*", { count: "exact", head: true })
             .eq("group_id", group.id);
 
-          // Get message count
-          const { count: messageCount } = await supabase
+          // Get message count and most recent message
+          const { count: messageCount, data: recentMessage } = await supabase
             .from("messages")
-            .select("*", { count: "exact", head: true })
-            .eq("group_id", group.id);
+            .select("created_at")
+            .eq("group_id", group.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+
+          // If no messages exist, use the group's creation time as last activity
+          let lastActivity = new Date(group.created_at);
+          if (recentMessage?.created_at) {
+            lastActivity = new Date(recentMessage.created_at);
+          }
 
           return {
             id: group.id,
@@ -100,9 +165,10 @@ export default function DashboardPage() {
             description: group.description || "",
             members: memberCount || 0,
             resources: messageCount || 0,
-            lastActivity: "Recently",
+            lastActivity: lastActivity,
             color: groupColors[group.id % groupColors.length],
             imageUrl: null,
+            owner_id: group.owner_id,
           };
         })
       );
@@ -115,6 +181,81 @@ export default function DashboardPage() {
       setLoading(false);
     }
   };
+
+  const fetchDiscoverGroups = async () => {
+    try {
+      setDiscoverLoading(true);
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
+
+      // Get all groups the user is already a member of
+      const { data: userMemberships } = await supabase
+        .from("memberships")
+        .select("group_id")
+        .eq("user_id", userId);
+
+      const userGroupIds = new Set((userMemberships || []).map((m: any) => m.group_id));
+
+      // Fetch all public groups
+      const { data: allGroups, error } = await supabase
+        .from("groups")
+        .select("id, name, description, owner_id, is_private, created_at")
+        .eq("is_private", false)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      // Filter out groups user is already a member of
+      const discoverableGroups = (allGroups || []).filter((group: any) => !userGroupIds.has(group.id)).slice(0, 20);
+
+      // Get member and message counts for each group along with last activity
+      const groupsWithCounts = await Promise.all(
+        discoverableGroups.map(async (group: any) => {
+          // Get member count
+          const { count: memberCount } = await supabase
+            .from("memberships")
+            .select("*", { count: "exact", head: true })
+            .eq("group_id", group.id);
+
+          // Get message count and most recent message
+          const { count: messageCount, data: recentMessage } = await supabase
+            .from("messages")
+            .select("created_at")
+            .eq("group_id", group.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+
+          // If no messages exist, use the group's creation time as last activity
+          let lastActivity = new Date(group.created_at);
+          if (recentMessage?.created_at) {
+            lastActivity = new Date(recentMessage.created_at);
+          }
+
+          return {
+            id: group.id,
+            name: group.name,
+            description: group.description || "",
+            members: memberCount || 0,
+            resources: messageCount || 0,
+            lastActivity: lastActivity,
+            color: groupColors[group.id % groupColors.length],
+            imageUrl: null,
+            owner_id: group.owner_id,
+          };
+        })
+      );
+
+      setDiscoverGroups(groupsWithCounts);
+    } catch (error) {
+      console.error("Error fetching discover groups:", error);
+    } finally {
+      setDiscoverLoading(false);
+    }
+  };
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
@@ -124,6 +265,12 @@ export default function DashboardPage() {
   const [isJoinGroupOpen, setIsJoinGroupOpen] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [studyStreak, setStudyStreak] = useState(0);
+  const [joinCodeDialogOpen, setJoinCodeDialogOpen] = useState(false);
+  const [selectedGroupForJoinCode, setSelectedGroupForJoinCode] = useState<number | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedGroupForDelete, setSelectedGroupForDelete] = useState<{ id: number; name: string } | null>(null);
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const [selectedGroupForLeave, setSelectedGroupForLeave] = useState<{ id: number; name: string } | null>(null);
 
   const groupColors = ["bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500", "bg-pink-500", "bg-yellow-500", "bg-red-500", "bg-indigo-500"];
 
@@ -272,9 +419,128 @@ export default function DashboardPage() {
       
       // Refresh groups list
       fetchGroups();
+      fetchDiscoverGroups();
       
       setIsJoinGroupOpen(false);
       setJoinCode("");
+    } catch (error: unknown) {
+      console.error("Error joining group:", error);
+      alert(`Failed to join group: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!selectedGroupForDelete) return;
+
+    try {
+      const groupId = selectedGroupForDelete.id;
+
+      // Delete all memberships for this group
+      const { error: membershipError } = await supabase
+        .from("memberships")
+        .delete()
+        .eq("group_id", groupId);
+
+      if (membershipError) {
+        console.error("Error deleting memberships:", membershipError);
+        // Continue anyway - might be due to foreign key constraints
+      }
+
+      // Delete all messages for this group
+      const { error: messagesError } = await supabase
+        .from("messages")
+        .delete()
+        .eq("group_id", groupId);
+
+      if (messagesError) {
+        console.error("Error deleting messages:", messagesError);
+      }
+
+      // Delete the group itself
+      const { error: groupError } = await supabase
+        .from("groups")
+        .delete()
+        .eq("id", groupId);
+
+      if (groupError) throw groupError;
+
+      // Refresh groups list
+      fetchGroups();
+      fetchDiscoverGroups();
+
+      setDeleteDialogOpen(false);
+      setSelectedGroupForDelete(null);
+    } catch (error: unknown) {
+      console.error("Error deleting group:", error);
+      alert(`Failed to delete group: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  };
+
+  const handleLeaveGroup = async () => {
+    if (!selectedGroupForLeave) return;
+
+    try {
+      const groupId = selectedGroupForLeave.id;
+
+      // Get current user ID
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
+
+      // Remove the user's membership
+      const { error } = await supabase
+        .from("memberships")
+        .delete()
+        .eq("user_id", userId)
+        .eq("group_id", groupId);
+
+      if (error) throw error;
+
+      // Refresh groups list
+      fetchGroups();
+      fetchDiscoverGroups();
+
+      setLeaveDialogOpen(false);
+      setSelectedGroupForLeave(null);
+    } catch (error: unknown) {
+      console.error("Error leaving group:", error);
+      alert(`Failed to leave group: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  };
+
+  const handleJoinDiscoverGroup = async (groupId: number, groupName: string) => {
+    try {
+      // Get current user ID
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
+
+      // Check if user is already a member
+      const { data: existingMembership } = await supabase
+        .from("memberships")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("group_id", groupId)
+        .single();
+
+      if (existingMembership) {
+        alert("You are already a member of this group!");
+        return;
+      }
+
+      // Add user as a member
+      const { error: membershipError } = await supabase
+        .from("memberships")
+        .insert({
+          user_id: userId,
+          group_id: groupId,
+        });
+
+      if (membershipError) throw membershipError;
+
+      alert(`Successfully joined "${groupName}"!`);
+      
+      // Refresh groups list
+      fetchGroups();
+      fetchDiscoverGroups();
     } catch (error: unknown) {
       console.error("Error joining group:", error);
       alert(`Failed to join group: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -292,6 +558,29 @@ export default function DashboardPage() {
         group.description.toLowerCase().includes(query)
     );
   }, [searchQuery, studyGroups]);
+
+  const filteredDiscoverGroups = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return discoverGroups;
+    }
+    const query = searchQuery.toLowerCase().trim();
+    return discoverGroups.filter(
+      (group) =>
+        group.name.toLowerCase().includes(query) ||
+        group.description.toLowerCase().includes(query)
+    );
+  }, [searchQuery, discoverGroups]);
+
+  const handleCopyJoinCode = async (groupId: number) => {
+    try {
+      await navigator.clipboard.writeText(groupId.toString());
+      setCopiedGroupId(groupId);
+      setTimeout(() => setCopiedGroupId(null), 2000);
+    } catch (error) {
+      console.error("Failed to copy:", error);
+      alert("Failed to copy join code. Please try again.");
+    }
+  };
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -587,7 +876,22 @@ export default function DashboardPage() {
                   className="hover:shadow-lg transition-shadow cursor-pointer"
                   onClick={() => router.push(`/groups/${group.id}`)}
                 >
-                  <CardContent className="p-6">
+                  <CardContent className="p-6 relative">
+                    {currentUserId === group.owner_id && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedGroupForDelete({ id: group.id, name: group.name });
+                          setDeleteDialogOpen(true);
+                        }}
+                        className="absolute top-2 right-2 h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        title="Delete group"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                     <div className="flex items-start gap-4">
                       {group.imageUrl ? (
                           <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-200">
@@ -608,11 +912,8 @@ export default function DashboardPage() {
                           <h3 className="text-lg font-semibold text-gray-900 mb-1">
                             {group.name}
                           </h3>
-                          <p className="text-sm text-gray-600 mb-1">
+                          <p className="text-sm text-gray-600 mb-3">
                             {group.description}
-                          </p>
-                          <p className="text-xs text-gray-500 mb-3">
-                            Group ID: {group.id}
                           </p>
                           <div className="flex items-center gap-4 text-sm text-gray-600">
                             <div className="flex items-center gap-1">
@@ -624,9 +925,41 @@ export default function DashboardPage() {
                               <span>{group.resources} resources</span>
                             </div>
                           </div>
-                          <p className="text-xs text-gray-500 mt-3">
-                            Last activity: {group.lastActivity}
-                          </p>
+                          <div className="flex items-center gap-1.5 mt-3 mb-3">
+                            <Clock className="h-3.5 w-3.5 text-gray-500" />
+                            <span className="text-xs text-gray-700">
+                              Recent activity: {formatTimeAgo(group.lastActivity)}
+                            </span>
+                          </div>
+                          {currentUserId === group.owner_id ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedGroupForJoinCode(group.id);
+                                setJoinCodeDialogOpen(true);
+                              }}
+                              className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
+                            >
+                              <Share2 className="h-4 w-4 mr-2" />
+                              View Join Code
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedGroupForLeave({ id: group.id, name: group.name });
+                                setLeaveDialogOpen(true);
+                              }}
+                              className="w-full border-orange-300 text-orange-700 hover:bg-orange-50"
+                            >
+                              <LogOut className="h-4 w-4 mr-2" />
+                              Leave Group
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -638,9 +971,81 @@ export default function DashboardPage() {
 
             {/* Discover Tab */}
             <TabsContent value="discover" className="mt-6">
-              <div className="text-center py-12 text-gray-500">
-                <p>Discover new study groups coming soon...</p>
-              </div>
+              {discoverLoading ? (
+                <div className="text-center py-12 text-gray-500">
+                  <p>Loading groups...</p>
+                </div>
+              ) : filteredDiscoverGroups.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <p>No groups available to discover. Create your own group to get started!</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {filteredDiscoverGroups.map((group) => (
+                    <Card 
+                      key={group.id} 
+                      className="hover:shadow-lg transition-shadow cursor-pointer"
+                      onClick={() => router.push(`/groups/${group.id}`)}
+                    >
+                      <CardContent className="p-6 relative">
+                        <div className="flex items-start gap-4">
+                          {group.imageUrl ? (
+                            <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-200">
+                              <img
+                                src={group.imageUrl}
+                                alt={group.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div
+                              className={`w-12 h-12 ${group.color} rounded-lg flex items-center justify-center flex-shrink-0`}
+                            >
+                              <Book className="h-6 w-6 text-white" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                              {group.name}
+                            </h3>
+                            <p className="text-sm text-gray-600 mb-3">
+                              {group.description}
+                            </p>
+                            <div className="flex items-center gap-4 text-sm text-gray-600">
+                              <div className="flex items-center gap-1">
+                                <Users className="h-4 w-4" />
+                                <span>{group.members} members</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <FileText className="h-4 w-4" />
+                                <span>{group.resources} resources</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-3 mb-3">
+                              <Clock className="h-3.5 w-3.5 text-gray-500" />
+                              <span className="text-xs text-gray-700">
+                                Recent activity: {formatTimeAgo(group.lastActivity)}
+                              </span>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleJoinDiscoverGroup(group.id, group.name);
+                              }}
+                              className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Join Group
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </TabsContent>
 
             {/* Recent Activity Tab */}
@@ -768,6 +1173,153 @@ export default function DashboardPage() {
               disabled={!joinCode}
             >
               Join Group
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Join Code Overlay */}
+      <Dialog open={joinCodeDialogOpen} onOpenChange={setJoinCodeDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Join Code</DialogTitle>
+            <DialogDescription>
+              Share this code with others so they can join your study group
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {selectedGroupForJoinCode && (
+              <div className="space-y-3">
+                <div className="p-6 bg-blue-50 border-2 border-blue-200 rounded-lg text-center">
+                  <p className="text-sm font-medium text-blue-900 mb-2">
+                    Your Join Code
+                  </p>
+                  <p className="text-4xl font-bold text-blue-700 font-mono tracking-wider">
+                    {selectedGroupForJoinCode}
+                  </p>
+                </div>
+                <Button
+                  onClick={() => selectedGroupForJoinCode && handleCopyJoinCode(selectedGroupForJoinCode)}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  size="lg"
+                >
+                  {copiedGroupId === selectedGroupForJoinCode ? (
+                    <>
+                      <Check className="h-5 w-5 mr-2" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-5 w-5 mr-2" />
+                      Copy Join Code
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-gray-500 text-center">
+                  Anyone with this code can join your group by entering it in the &quot;Join Group&quot; section
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setJoinCodeDialogOpen(false);
+                setSelectedGroupForJoinCode(null);
+              }}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Group Confirmation Overlay */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Delete Study Group</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this study group? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {selectedGroupForDelete && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm font-medium text-red-900 mb-1">
+                  Group to be deleted:
+                </p>
+                <p className="text-base font-semibold text-red-700">
+                  {selectedGroupForDelete.name}
+                </p>
+                <p className="text-xs text-red-600 mt-2">
+                  This will permanently delete the group, all memberships, and all messages.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setSelectedGroupForDelete(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteGroup}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Group
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Leave Group Confirmation Overlay */}
+      <Dialog open={leaveDialogOpen} onOpenChange={setLeaveDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Leave Study Group</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to leave this study group? You can rejoin later using the join code.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {selectedGroupForLeave && (
+              <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <p className="text-sm font-medium text-orange-900 mb-1">
+                  Group you&apos;ll be leaving:
+                </p>
+                <p className="text-base font-semibold text-orange-700">
+                  {selectedGroupForLeave.name}
+                </p>
+                <p className="text-xs text-orange-600 mt-2">
+                  You will no longer have access to this group&apos;s messages and resources.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setLeaveDialogOpen(false);
+                setSelectedGroupForLeave(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleLeaveGroup}
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Leave Group
             </Button>
           </DialogFooter>
         </DialogContent>
