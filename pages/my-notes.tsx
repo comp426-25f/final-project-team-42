@@ -39,6 +39,12 @@ interface Document {
   file_size?: number;
 }
 
+interface Group {
+  id: number;
+  name: string;
+  description: string | null;
+}
+
 type ViewMode = 'grid' | 'list';
 type FilterType = 'all' | 'personal' | 'shared' | 'recent';
 
@@ -61,9 +67,17 @@ export default function MyNotesPage() {
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filterType, setFilterType] = useState<FilterType>('all');
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [documentToShare, setDocumentToShare] = useState<Document | null>(null);
+  const [userGroups, setUserGroups] = useState<Group[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const [isViewContentOpen, setIsViewContentOpen] = useState(false);
+  const [documentToView, setDocumentToView] = useState<Document | null>(null);
 
   useEffect(() => {
     fetchDocuments();
+    fetchUserGroups();
     const channel = supabase
       .channel("documents-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => fetchDocuments())
@@ -73,17 +87,62 @@ export default function MyNotesPage() {
 
   const fetchDocuments = async () => {
     try {
-      const { data, error } = await supabase
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error("No user logged in");
+        setLoading(false);
+        return;
+      }
+      
+      // Convert Supabase UUID to integer ID for database lookup
+      const userId = parseInt(user.id.substring(0, 8), 16);
+      
+      // Fetch personal notes (group_id is null) for the current user
+      const { data: personalNotes, error: personalError } = await supabase
         .from("messages")
         .select("*, author:users!messages_author_id_fkey(name, avatar_url), group:groups(name)")
+        .eq("author_id", userId)
+        .is("group_id", null)
         .order("created_at", { ascending: false });
-      if (error) throw error;
       
-      const formattedDocs: Document[] = (data || []).map((doc: any) => ({
+      if (personalError) throw personalError;
+      
+      // Fetch groups where user is a member
+      const { data: memberships, error: membershipError } = await supabase
+        .from("memberships")
+        .select("group_id")
+        .eq("user_id", userId);
+      
+      if (membershipError) throw membershipError;
+      
+      const userGroupIds = (memberships || []).map((m: any) => m.group_id);
+      
+      // Fetch group notes from user's groups
+      let groupNotes: any[] = [];
+      if (userGroupIds.length > 0) {
+        const { data: groupData, error: groupError } = await supabase
+          .from("messages")
+          .select("*, author:users!messages_author_id_fkey(name, avatar_url), group:groups(name)")
+          .in("group_id", userGroupIds)
+          .not("group_id", "is", null)
+          .order("created_at", { ascending: false });
+        
+        if (groupError) throw groupError;
+        groupNotes = groupData || [];
+      }
+      
+      // Combine personal and group notes
+      const allNotes = [...(personalNotes || []), ...groupNotes];
+      
+      const formattedDocs: Document[] = allNotes.map((doc: any) => ({
         ...doc,
         title: doc.message?.substring(0, 50) || 'Untitled Document',
         file_type: getFileType(doc.attachment_url),
       }));
+      
+      // Sort by created_at descending
+      formattedDocs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       
       setDocuments(formattedDocs);
     } catch (error) {
@@ -178,6 +237,17 @@ export default function MyNotesPage() {
     }
     setUploading(true);
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert("You must be logged in to create a note");
+        setUploading(false);
+        return;
+      }
+      
+      // Convert Supabase UUID to integer ID for database lookup
+      const userId = parseInt(user.id.substring(0, 8), 16);
+      
       let attachmentUrl = null;
       if (selectedFile) {
         attachmentUrl = await uploadFile(selectedFile);
@@ -189,7 +259,7 @@ export default function MyNotesPage() {
       const { error } = await supabase.from("messages").insert({
         message: newDoc.title || selectedFile?.name || "Untitled",
         attachment_url: attachmentUrl,
-        author_id: 1, // Default user for testing
+        author_id: userId,
         group_id: null, // Personal document
       });
       if (error) throw error;
@@ -203,6 +273,75 @@ export default function MyNotesPage() {
       alert("Failed to create document");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const fetchUserGroups = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const userId = parseInt(user.id.substring(0, 8), 16);
+      
+      // Fetch groups where user is a member
+      const { data, error } = await supabase
+        .from("memberships")
+        .select(`
+          group_id,
+          groups (
+            id,
+            name,
+            description
+          )
+        `)
+        .eq("user_id", userId);
+      
+      if (error) throw error;
+      
+      const groups = (data || []).map((membership: any) => membership.groups).filter(Boolean);
+      setUserGroups(groups);
+    } catch (error) {
+      console.error("Error fetching groups:", error);
+    }
+  };
+
+  const handleShareDocument = async () => {
+    if (!documentToShare || !selectedGroupId) {
+      alert("Please select a group to share with");
+      return;
+    }
+    
+    setSharing(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert("You must be logged in to share");
+        setSharing(false);
+        return;
+      }
+      
+      const userId = parseInt(user.id.substring(0, 8), 16);
+      
+      // Create a copy of the note in the selected group
+      const { error } = await supabase.from("messages").insert({
+        message: documentToShare.message,
+        attachment_url: documentToShare.attachment_url,
+        author_id: userId,
+        group_id: selectedGroupId,
+      });
+      
+      if (error) throw error;
+      
+      alert("Note shared successfully!");
+      setIsShareDialogOpen(false);
+      setDocumentToShare(null);
+      setSelectedGroupId(null);
+      fetchDocuments(); // Refresh the documents list to show the newly shared note
+    } catch (error) {
+      console.error("Error sharing document:", error);
+      alert("Failed to share document");
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -490,21 +629,25 @@ export default function MyNotesPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {doc.attachment_url && (
-                              <DropdownMenuItem onClick={() => window.open(doc.attachment_url!, '_blank')}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                View
-                              </DropdownMenuItem>
-                            )}
+                            <DropdownMenuItem onClick={() => {
+                              setDocumentToView(doc);
+                              setIsViewContentOpen(true);
+                            }}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Content
+                            </DropdownMenuItem>
                             {doc.attachment_url && (
                               <DropdownMenuItem onClick={() => window.open(doc.attachment_url!, '_blank')}>
                                 <Download className="h-4 w-4 mr-2" />
-                                Download
+                                Download Attachment
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setDocumentToShare(doc);
+                              setIsShareDialogOpen(true);
+                            }}>
                               <Share2 className="h-4 w-4 mr-2" />
-                              Share
+                              Share to Group
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
@@ -584,21 +727,25 @@ export default function MyNotesPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => {
+                              setDocumentToView(doc);
+                              setIsViewContentOpen(true);
+                            }}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Content
+                            </DropdownMenuItem>
                             {doc.attachment_url && (
-                              <>
-                                <DropdownMenuItem onClick={() => window.open(doc.attachment_url!, '_blank')}>
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  View
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => window.open(doc.attachment_url!, '_blank')}>
-                                  <Download className="h-4 w-4 mr-2" />
-                                  Download
-                                </DropdownMenuItem>
-                              </>
+                              <DropdownMenuItem onClick={() => window.open(doc.attachment_url!, '_blank')}>
+                                <Download className="h-4 w-4 mr-2" />
+                                Download Attachment
+                              </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setDocumentToShare(doc);
+                              setIsShareDialogOpen(true);
+                            }}>
                               <Share2 className="h-4 w-4 mr-2" />
-                              Share
+                              Share to Group
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
@@ -697,7 +844,123 @@ export default function MyNotesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
+      {/* Share Document Dialog */}
+      <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Share Note to Group</DialogTitle>
+            <DialogDescription>
+              Select a group to share this note with. The note will be copied to the group's shared notes board.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {documentToShare && (
+              <div className="rounded-lg bg-gray-50 p-3 mb-4">
+                <p className="text-sm font-medium text-gray-900 mb-1">
+                  {documentToShare.title}
+                </p>
+                {documentToShare.message && documentToShare.message !== documentToShare.title && (
+                  <p className="text-xs text-gray-600 line-clamp-2">
+                    {documentToShare.message}
+                  </p>
+                )}
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="group">Select Group</Label>
+              {userGroups.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  You are not a member of any groups yet. Join a group to share notes.
+                </p>
+              ) : (
+                <select
+                  id="group"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={selectedGroupId || ""}
+                  onChange={(e) => setSelectedGroupId(e.target.value ? parseInt(e.target.value) : null)}
+                >
+                  <option value="">Choose a group...</option>
+                  {userGroups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsShareDialogOpen(false);
+              setDocumentToShare(null);
+              setSelectedGroupId(null);
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleShareDocument} 
+              disabled={sharing || !selectedGroupId || userGroups.length === 0}
+            >
+              {sharing ? "Sharing..." : "Share to Group"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Content Dialog */}
+      <Dialog open={isViewContentOpen} onOpenChange={setIsViewContentOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{documentToView?.title || 'Document'}</DialogTitle>
+            <DialogDescription>
+              {documentToView?.author?.name && `Created by ${documentToView.author.name}`}
+              {documentToView?.group?.name && ` • Shared in ${documentToView.group.name}`}
+              {documentToView?.created_at && ` • ${new Date(documentToView.created_at).toLocaleString()}`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {documentToView?.message && (
+              <div className="rounded-lg bg-gray-50 p-4">
+                <p className="text-sm whitespace-pre-wrap break-words">
+                  {documentToView.message}
+                </p>
+              </div>
+            )}
+            {documentToView?.attachment_url && (
+              <div className="space-y-2">
+                <Label>Attachment</Label>
+                {documentToView.file_type === 'image' ? (
+                  <img 
+                    src={documentToView.attachment_url} 
+                    alt={documentToView.title}
+                    className="w-full rounded-lg border"
+                  />
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => window.open(documentToView.attachment_url!, '_blank')}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download {documentToView.file_type?.toUpperCase() || 'File'}
+                  </Button>
+                )}
+              </div>
+            )}
+            {!documentToView?.message && !documentToView?.attachment_url && (
+              <p className="text-sm text-gray-500 text-center py-4">
+                No content available
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsViewContentOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

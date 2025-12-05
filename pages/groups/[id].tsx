@@ -1,5 +1,6 @@
 import { GetServerSideProps } from "next";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/router";
 import { createSupabaseServerClient } from "@/utils/supabase/clients/server-props";
 import { createSupabaseComponentClient } from "@/utils/supabase/clients/component";
 
@@ -14,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ImagePlus, Loader2Icon, Send, X } from "lucide-react";
+import { ArrowLeft, ImagePlus, Loader2Icon, Send, X } from "lucide-react";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Subject } from "@/server/models/auth";
 
@@ -64,6 +65,7 @@ const uploadPostFileToSupabase = async (
 
 
 export default function GroupPage({ group, user, authorId }: GroupPageProps) {
+  const router = useRouter();
   const supabase = createSupabaseComponentClient();
 
   const [draftText, setDraftText] = useState("");
@@ -246,6 +248,14 @@ export default function GroupPage({ group, user, authorId }: GroupPageProps) {
   return (
     <div className="container mx-auto py-8">
       <div className="mb-6">
+        <Button
+          variant="ghost"
+          onClick={() => router.push("/dashboard")}
+          className="mb-4 -ml-2"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Dashboard
+        </Button>
         <h1 className="text-3xl font-bold">{group.name}</h1>
         {group.description && (
           <p className="mt-2 text-muted-foreground">{group.description}</p>
