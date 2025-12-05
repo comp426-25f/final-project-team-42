@@ -72,6 +72,8 @@ export default function MyNotesPage() {
   const [userGroups, setUserGroups] = useState<Group[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [sharing, setSharing] = useState(false);
+  const [isViewContentOpen, setIsViewContentOpen] = useState(false);
+  const [documentToView, setDocumentToView] = useState<Document | null>(null);
 
   useEffect(() => {
     fetchDocuments();
@@ -636,16 +638,17 @@ export default function MyNotesPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {doc.attachment_url && (
-                              <DropdownMenuItem onClick={() => window.open(doc.attachment_url!, '_blank')}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                View
-                              </DropdownMenuItem>
-                            )}
+                            <DropdownMenuItem onClick={() => {
+                              setDocumentToView(doc);
+                              setIsViewContentOpen(true);
+                            }}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Content
+                            </DropdownMenuItem>
                             {doc.attachment_url && (
                               <DropdownMenuItem onClick={() => window.open(doc.attachment_url!, '_blank')}>
                                 <Download className="h-4 w-4 mr-2" />
-                                Download
+                                Download Attachment
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem onClick={() => {
@@ -733,17 +736,18 @@ export default function MyNotesPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => {
+                              setDocumentToView(doc);
+                              setIsViewContentOpen(true);
+                            }}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Content
+                            </DropdownMenuItem>
                             {doc.attachment_url && (
-                              <>
-                                <DropdownMenuItem onClick={() => window.open(doc.attachment_url!, '_blank')}>
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  View
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => window.open(doc.attachment_url!, '_blank')}>
-                                  <Download className="h-4 w-4 mr-2" />
-                                  Download
-                                </DropdownMenuItem>
-                              </>
+                              <DropdownMenuItem onClick={() => window.open(doc.attachment_url!, '_blank')}>
+                                <Download className="h-4 w-4 mr-2" />
+                                Download Attachment
+                              </DropdownMenuItem>
                             )}
                             <DropdownMenuItem onClick={() => {
                               setDocumentToShare(doc);
@@ -908,6 +912,60 @@ export default function MyNotesPage() {
               disabled={sharing || !selectedGroupId || userGroups.length === 0}
             >
               {sharing ? "Sharing..." : "Share to Group"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Content Dialog */}
+      <Dialog open={isViewContentOpen} onOpenChange={setIsViewContentOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{documentToView?.title || 'Document'}</DialogTitle>
+            <DialogDescription>
+              {documentToView?.author?.name && `Created by ${documentToView.author.name}`}
+              {documentToView?.group?.name && ` • Shared in ${documentToView.group.name}`}
+              {documentToView?.created_at && ` • ${new Date(documentToView.created_at).toLocaleString()}`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {documentToView?.message && (
+              <div className="rounded-lg bg-gray-50 p-4">
+                <p className="text-sm whitespace-pre-wrap break-words">
+                  {documentToView.message}
+                </p>
+              </div>
+            )}
+            {documentToView?.attachment_url && (
+              <div className="space-y-2">
+                <Label>Attachment</Label>
+                {documentToView.file_type === 'image' ? (
+                  <img 
+                    src={documentToView.attachment_url} 
+                    alt={documentToView.title}
+                    className="w-full rounded-lg border"
+                  />
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => window.open(documentToView.attachment_url!, '_blank')}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download {documentToView.file_type?.toUpperCase() || 'File'}
+                  </Button>
+                )}
+              </div>
+            )}
+            {!documentToView?.message && !documentToView?.attachment_url && (
+              <p className="text-sm text-gray-500 text-center py-4">
+                No content available
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsViewContentOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
