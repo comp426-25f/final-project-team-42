@@ -15,12 +15,14 @@ export async function extractTextFromPDF(file: File): Promise<string> {
   }
 
   try {
-    // Use legacy ESM build to keep worker and main script aligned.
-    const pdfjsLibModule = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    // Use legacy build to stay compatible with Next.js bundler.
+    // @ts-ignore -- legacy bundle ships without proper type declarations.
+    const pdfjsLibModule = await import("pdfjs-dist/legacy/build/pdf.js");
     const pdfjsLib = (pdfjsLibModule as any).default || pdfjsLibModule;
 
+    // @ts-ignore -- worker bundle resolves to a string URL at runtime.
     const workerSrcModule = await import(
-      "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url"
+      "pdfjs-dist/legacy/build/pdf.worker.min.js?url"
     );
     pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrcModule.default;
 
