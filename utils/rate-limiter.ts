@@ -1,6 +1,5 @@
 /**
- * Simple in-memory rate limiter
- * Tracks requests per user/IP to prevent API abuse
+ * Simple in-memory rate limiter to guard AI endpoints.
  */
 
 interface RateLimitRecord {
@@ -8,38 +7,29 @@ interface RateLimitRecord {
   resetTime: number;
 }
 
-// Store rate limit data in memory (note: resets on server restart)
 const rateLimitStore = new Map<string, RateLimitRecord>();
 
 /**
- * Check if a user has exceeded their rate limit
- * @param identifier - User ID or IP address
- * @param maxRequests - Maximum requests allowed in the time window
- * @param windowMs - Time window in milliseconds (default: 1 minute)
- * @returns Object with success status and remaining requests
+ * Increment usage for `identifier` and determine whether the request is allowed.
  */
 export function checkRateLimit(
   identifier: string,
   maxRequests: number = 10,
-  windowMs: number = 60000 // 1 minute default
+  windowMs: number = 60_000,
 ): { success: boolean; remaining: number; resetTime: number } {
   const now = Date.now();
   const record = rateLimitStore.get(identifier);
 
-  // If no record exists or the time window has passed, create/reset
   if (!record || now > record.resetTime) {
-    rateLimitStore.set(identifier, {
-      count: 1,
-      resetTime: now + windowMs,
-    });
+    const resetTime = now + windowMs;
+    rateLimitStore.set(identifier, { count: 1, resetTime });
     return {
       success: true,
       remaining: maxRequests - 1,
-      resetTime: now + windowMs,
+      resetTime,
     };
   }
 
-  // If within time window, check if limit exceeded
   if (record.count >= maxRequests) {
     return {
       success: false,
@@ -48,7 +38,6 @@ export function checkRateLimit(
     };
   }
 
-  // Increment count
   record.count += 1;
   rateLimitStore.set(identifier, record);
 
@@ -60,8 +49,7 @@ export function checkRateLimit(
 }
 
 /**
- * Clean up old rate limit records (optional maintenance function)
- * Call this periodically to prevent memory leaks
+ * Optional maintenance helper to purge expired records.
  */
 export function cleanupRateLimitStore() {
   const now = Date.now();
@@ -71,4 +59,3 @@ export function cleanupRateLimitStore() {
     }
   }
 }
-
