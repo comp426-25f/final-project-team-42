@@ -910,7 +910,7 @@ export default function DashboardPage() {
                     <li>
                       <button
                         onClick={() => router.push("/study-groups")}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:bg-accent transition-colors"
                         title="Group Chats"
                       >
                         <Users className="h-5 w-5 flex-shrink-0" />
