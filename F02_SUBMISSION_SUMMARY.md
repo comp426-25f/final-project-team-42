@@ -1,6 +1,7 @@
 # F02 Development Sprint 1 - Submission Summary
 
 ## Project Information
+
 - **Course:** COMP 426: Modern Web Programming
 - **Team:** Team 42
 - **Submission:** F02 Development Sprint 1
@@ -11,12 +12,14 @@
 ## 📋 Three Implemented Features
 
 ### 1. User Authentication & Profile Management
+
 **Status:** ✅ Complete
 
 **Description:**
 Users can create accounts, log in, log out, and maintain persistent sessions across browser refreshes. Authentication is handled through Supabase Auth with email/password.
 
 **Technical Implementation:**
+
 - Supabase Auth for user management
 - Session persistence using cookies
 - Protected routes with authentication checks
@@ -27,13 +30,15 @@ See `FEATURE_TESTING_GUIDE.md` - Feature 1
 
 ---
 
-### 2. Study Group Management
+### 2. group chat Management
+
 **Status:** ✅ Complete
 
 **Description:**
-Users can create study groups with course information and descriptions. Groups are displayed on a dashboard with member counts and resource statistics. Users can navigate to individual group pages.
+Users can create group chats with course information and descriptions. Groups are displayed on a dashboard with member counts and resource statistics. Users can navigate to individual group pages.
 
 **Technical Implementation:**
+
 - Database tables: `groups`, `memberships`
 - Group creation with owner assignment
 - Dynamic group statistics (member count, resource count)
@@ -45,12 +50,14 @@ See `FEATURE_TESTING_GUIDE.md` - Feature 2
 ---
 
 ### 3. Shared Notes Board with File Uploads
+
 **Status:** ✅ Complete
 
 **Description:**
-Each study group has a shared notes board where members can post text messages and upload files (images and PDFs up to 10MB). Files are stored in Supabase Storage and messages update in real-time across all connected clients.
+Each group chat has a shared notes board where members can post text messages and upload files (images and PDFs up to 10MB). Files are stored in Supabase Storage and messages update in real-time across all connected clients.
 
 **Technical Implementation:**
+
 - Database table: `messages` (with `group_id`, `author_id`, `message`, `attachment_url`, `created_at`)
 - Supabase Storage bucket: `group-files`
 - Real-time subscriptions using Supabase Realtime
@@ -66,16 +73,19 @@ See `FEATURE_TESTING_GUIDE.md` - Feature 3
 ## 🔗 Links for Submission
 
 ### GitHub Repository
+
 ```
 https://github.com/comp426-25f/final-project-team-42
 ```
 
 ### Project Board
+
 ```
 [Your GitHub Projects board URL]
 ```
 
 ### Vercel Deployment
+
 ```
 [Your Vercel deployment URL - will be available after deployment]
 ```
@@ -85,16 +95,20 @@ https://github.com/comp426-25f/final-project-team-42
 ## 🚀 Deployment Instructions
 
 ### Quick Start
+
 Follow `VERCEL_QUICK_START.md` for a 5-minute deployment guide.
 
 ### Detailed Guide
+
 See `DEPLOYMENT.md` for comprehensive deployment instructions including:
+
 - Environment variable setup
 - Vercel configuration
 - Troubleshooting common issues
 - Redeployment process
 
 ### Prerequisites
+
 - Vercel account
 - GitHub repository access
 - Supabase project credentials
@@ -104,12 +118,14 @@ See `DEPLOYMENT.md` for comprehensive deployment instructions including:
 ## 🧪 Testing Instructions
 
 Detailed testing instructions for all three features are available in:
+
 - `FEATURE_TESTING_GUIDE.md`
 
 ### Quick Test Checklist
+
 - [ ] Sign up with new account
 - [ ] Log in with credentials
-- [ ] Create a study group
+- [ ] Create a group chat
 - [ ] Navigate to group page
 - [ ] Post a text message
 - [ ] Upload an image file
@@ -144,7 +160,7 @@ final-project-team-42/
 │   │   ├── messages/[groupId].ts # Messages API endpoint
 │   │   └── upload.ts             # File upload API endpoint
 │   ├── groups/[id].tsx           # Group detail page
-│   ├── dashboard.tsx             # Study groups dashboard
+│   ├── dashboard.tsx             # groups dashboard
 │   ├── login.tsx                 # Login page
 │   ├── signup.tsx                # Signup page
 │   └── my-notes.tsx              # Personal notes page
@@ -164,6 +180,7 @@ final-project-team-42/
 ## 📊 Database Schema
 
 ### Users Table
+
 ```sql
 - id: integer (primary key)
 - name: text
@@ -173,6 +190,7 @@ final-project-team-42/
 ```
 
 ### Groups Table
+
 ```sql
 - id: serial (primary key)
 - name: text
@@ -183,6 +201,7 @@ final-project-team-42/
 ```
 
 ### Memberships Table
+
 ```sql
 - id: serial (primary key)
 - user_id: integer (foreign key → users.id)
@@ -191,6 +210,7 @@ final-project-team-42/
 ```
 
 ### Messages Table
+
 ```sql
 - id: serial (primary key)
 - group_id: integer (foreign key → groups.id)
@@ -227,6 +247,7 @@ Build command: `npm run build`
 ## 📝 Known Limitations (F02)
 
 These are acceptable for F02 and will be addressed in F03:
+
 - PDF thumbnails not generated (shows download link)
 - Upload progress bar not implemented (only disabled state)
 - Some ESLint warnings for React hooks dependencies
@@ -238,17 +259,18 @@ These do not affect functionality and are noted per instructor guidance that "st
 
 ## 🎯 Feature Completion Status
 
-| Feature | Status | Tested | Deployed |
-|---------|--------|--------|----------|
-| User Authentication | ✅ Complete | ✅ Yes | 🔄 Pending |
-| Study Group Management | ✅ Complete | ✅ Yes | 🔄 Pending |
-| Shared Notes Board | ✅ Complete | ✅ Yes | 🔄 Pending |
+| Feature               | Status      | Tested | Deployed   |
+| --------------------- | ----------- | ------ | ---------- |
+| User Authentication   | ✅ Complete | ✅ Yes | 🔄 Pending |
+| group chat Management | ✅ Complete | ✅ Yes | 🔄 Pending |
+| Shared Notes Board    | ✅ Complete | ✅ Yes | 🔄 Pending |
 
 ---
 
 ## 👥 Team Contributions
 
 All team members should have commits in the GitHub repository. Check commit history:
+
 ```bash
 git log --all --pretty=format:"%h %an %s" --graph
 ```
@@ -268,6 +290,7 @@ git log --all --pretty=format:"%h %an %s" --graph
 ## 🔄 Next Steps (F03)
 
 For the next sprint, we plan to implement:
+
 - Calendar integration
 - AI study assistant
 - Additional polish and technical requirements

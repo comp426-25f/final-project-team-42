@@ -15,6 +15,10 @@ import {
 } from "@/components/ui/collapsible";
 import { createSupabaseComponentClient } from "@/utils/supabase/clients/component";
 
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+
 
 import {
   Book,
@@ -25,16 +29,25 @@ import {
   Settings,
   Sparkles,
   Users,
-  MessageSquare,
   FileText,
   Plus,
   Lock,
   Unlock,
 } from "lucide-react";
 
-export default function StudyGroupsPage() {
+export default function GroupsPage() {
   const router = useRouter();
   const supabase = createSupabaseComponentClient();
+  const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [course, setCourse] = useState("");
+  const [description, setDescription] = useState("");
+  const [isJoinGroupOpen, setIsJoinGroupOpen] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
+  const [groupImagePreview, setGroupImagePreview] = useState<string | null>(null);
+  
+  
+
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [userName, setUserName] = useState("");
@@ -84,6 +97,158 @@ export default function StudyGroupsPage() {
       console.error("Error fetching groups:", error);
     } finally {
       setLoading(false);
+    }
+  };
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        alert("Please select an image file");
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Image size must be less than 5MB");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setGroupImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  const handleCreateGroup = async () => {
+    if (!groupName || !course || !description) return;
+
+    try {
+      // First, ensure we have a default user (for testing without auth)
+      const { data: existingUser } = await supabase
+        .from("users")
+        .select("id")
+        .eq("id", 1)
+        .single();
+
+      if (!existingUser) {
+        // Create default user if doesn't exist
+        await supabase.from("users").insert({
+          id: 1,
+          name: "Test User",
+          email: "test@example.com",
+        });
+      }
+
+      // Get current user ID
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
+
+      // Create the group
+      const { data: newGroup, error: groupError } = await supabase
+        .from("groups")
+        .insert({
+          name: `${course} - ${groupName}`,
+          description: description,
+          owner_id: userId,
+          is_private: false,
+        })
+        .select()
+        .single();
+
+      if (groupError) throw groupError;
+
+      // Automatically add the creator as a member
+      if (newGroup) {
+        const { error: membershipError } = await supabase
+          .from("memberships")
+          .insert({
+            user_id: userId,
+            group_id: newGroup.id,
+          });
+
+        if (membershipError) {
+          console.error("Error adding creator as member:", membershipError);
+        }
+      }
+
+      // Refresh groups list
+      fetchGroups();
+
+      setIsCreateGroupOpen(false);
+      setGroupName("");
+      setCourse("");
+      setDescription("");
+      setGroupImagePreview(null);
+    } catch (error: unknown) {
+      console.error("Error creating group:", error);
+      alert(`Failed to create group: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
+    }
+  };
+
+  const handleJoinGroup = async () => {
+    if (!joinCode.trim()) {
+      alert("Please enter a group ID");
+      return;
+    }
+
+    try {
+      // Get current user ID
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
+
+      // Parse group ID from join code
+      const groupId = parseInt(joinCode.trim());
+      
+      if (isNaN(groupId)) {
+        alert("Invalid group ID. Please enter a number.");
+        return;
+      }
+
+      // Check if group exists
+      const { data: group, error: groupError } = await supabase
+        .from("groups")
+        .select("id, name")
+        .eq("id", groupId)
+        .single();
+
+      if (groupError || !group) {
+        alert("Group not found. Please check the group ID.");
+        return;
+      }
+
+      // Check if user is already a member
+      const { data: existingMembership } = await supabase
+        .from("memberships")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("group_id", groupId)
+        .single();
+
+      if (existingMembership) {
+        alert("You are already a member of this group!");
+        setIsJoinGroupOpen(false);
+        setJoinCode("");
+        return;
+      }
+
+      // Add user as a member
+      const { error: membershipError } = await supabase
+        .from("memberships")
+        .insert({
+          user_id: userId,
+          group_id: groupId,
+        });
+
+      if (membershipError) throw membershipError;
+
+      alert(`Successfully joined "${group.name}"!`);
+      
+      // Refresh groups list
+      fetchGroups();
+      
+      setIsJoinGroupOpen(false);
+      setJoinCode("");
+    } catch (error: unknown) {
+      console.error("Error joining group:", error);
+      alert(`Failed to join group: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   };
 
@@ -169,10 +334,10 @@ export default function StudyGroupsPage() {
                       <button
                         onClick={() => router.push("/study-groups")}
                         className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-100 text-gray-900 font-medium"
-                        title="Study Groups"
+                        title="Group Chats"
                       >
                         <Users className="h-5 w-5 flex-shrink-0" />
-                        {!isSidebarCollapsed && <span>Study Groups</span>}
+                        <span>Group Chats</span>
                       </button>
                     </li>
                     <li>
@@ -185,16 +350,7 @@ export default function StudyGroupsPage() {
                         {!isSidebarCollapsed && <span>AI Assistant</span>}
                       </button>
                     </li>
-                    <li>
-                      <button
-                        onClick={() => router.push("/group-chat")}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
-                        title="Group Chat"
-                      >
-                        <MessageSquare className="h-5 w-5 flex-shrink-0" />
-                        {!isSidebarCollapsed && <span>Group Chat</span>}
-                      </button>
-                    </li>
+                   
                     <li>
                       <button
                         onClick={() => router.push("/my-notes")}
@@ -270,20 +426,27 @@ export default function StudyGroupsPage() {
         <div className="bg-white border-b border-gray-200 p-4">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Study Groups</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Group Chats</h1>
               <p className="text-sm text-gray-600">
                 Find a group to join or create your own.
               </p>
             </div>
-            <Button
-              className="gap-2"
-              onClick={() => {
-                console.log("Join / Create clicked"); //IMPLEMENT ROUTER
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              Join / Create
-            </Button>
+             <div className="flex gap-3">
+                <Button
+                  onClick={() => setIsCreateGroupOpen(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Group
+                </Button>
+                <Button
+                  onClick={() => setIsJoinGroupOpen(true)}
+                  className="border-gray-300 text-black"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Join Group
+                </Button>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -295,7 +458,7 @@ export default function StudyGroupsPage() {
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setSearchQuery(e.target.value)
                 }
-                className="pl-10"
+                className="pl-10 text-black"
               />
             </div>
           </div>
@@ -315,17 +478,8 @@ export default function StudyGroupsPage() {
               <p className="text-gray-600 mb-4">
                 {searchQuery
                   ? "Try adjusting your filter."
-                  : "Create your first study group to get started."}
+                  : "Create your first Group Chat to get started."}
               </p>
-              {!searchQuery && (
-                <Button
-                  className="gap-2"
-                  onClick={() => console.log("Create Group")}//IMPLEMENT CREATEGROUP
-                >
-                  <Plus className="h-4 w-4" />
-                  Create Group
-                </Button>
-              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -374,17 +528,6 @@ export default function StudyGroupsPage() {
                           Created {formatDate(group.created_at)}
                         </span>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 px-3 text-xs"
-                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                          e.stopPropagation();
-                          console.log("Join group", group.id);//IMPLEMENT JOIN GROUP
-                        }}
-                      >
-                        Join
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -393,6 +536,126 @@ export default function StudyGroupsPage() {
           )}
         </div>
       </div>
+      <Dialog open={isCreateGroupOpen} onOpenChange={setIsCreateGroupOpen}>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Create Group Chat</DialogTitle>
+                  <DialogDescription>
+                    Start a new group chat for your course
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="group-name">Group Name</Label>
+                    <Input
+                      id="group-name"
+                      placeholder="e.g., COMP 110 Group Chat"
+                      value={groupName}
+                      onChange={(e) => setGroupName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="course">Course</Label>
+                    <Input
+                      id="course"
+                      placeholder="e.g., COMP 110"
+                      value={course}
+                      onChange={(e) => setCourse(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      placeholder="Brief description of the group"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={4}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="group-image">Group Image (Optional)</Label>
+                    <Input
+                      id="group-image"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="cursor-pointer"
+                    />
+                    {groupImagePreview && (
+                      <div className="mt-2">
+                        <img
+                          src={groupImagePreview}
+                          alt="Group preview"
+                          className="w-24 h-24 object-cover rounded-lg border border-gray-200"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsCreateGroupOpen(false);
+                      setGroupName("");
+                      setCourse("");
+                      setDescription("");
+                      setGroupImagePreview(null);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleCreateGroup}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    disabled={!groupName || !course || !description}
+                  >
+                    Create Group
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+      
+            {/* Join Group Overlay */}
+            <Dialog open={isJoinGroupOpen} onOpenChange={setIsJoinGroupOpen}>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Join a Group Chat</DialogTitle>
+                  <DialogDescription>
+                    Join a group chat for your course
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="join-code">Join Code</Label>
+                    <Input
+                      id="join-code"
+                      placeholder="Enter join code"
+                      value={joinCode}
+                      onChange={(e) => setJoinCode(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsJoinGroupOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleJoinGroup}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    disabled={!joinCode}
+                  >
+                    Join Group
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
     </div>
   );
 }

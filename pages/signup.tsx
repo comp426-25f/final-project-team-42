@@ -73,7 +73,7 @@ export default function SignupPage() {
           </h2>
           
           <p className="text-gray-700 leading-relaxed text-base">
-            Join UNC students in creating collaborative study groups, sharing resources, and using AI-powered tools to ace your classes.
+            Join UNC students in creating collaborative group chats, sharing resources, and using AI-powered tools to ace your classes.
           </p>
           
           {/* Features */}
@@ -104,7 +104,7 @@ export default function SignupPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900 mb-1">Real-Time Chat</h3>
-                <p className="text-sm text-gray-600">Discuss and collaborate with your study groups</p>
+                <p className="text-sm text-gray-600">Discuss and collaborate with your group chats</p>
               </div>
             </div>
           </div>

@@ -3,6 +3,7 @@
 ## Prerequisites
 
 Before deploying to Vercel, ensure you have:
+
 - A Vercel account (sign up at https://vercel.com)
 - Your Supabase project credentials
 - Git repository pushed to GitHub
@@ -54,16 +55,19 @@ OPENAI_KEY=your_openai_key (if using AI features)
 ### Option B: Deploy via Vercel CLI
 
 1. **Install Vercel CLI**
+
    ```bash
    npm install -g vercel
    ```
 
 2. **Login to Vercel**
+
    ```bash
    vercel login
    ```
 
 3. **Deploy from Project Root**
+
    ```bash
    cd /Users/megangao/final-project-team-42
    vercel
@@ -78,6 +82,7 @@ OPENAI_KEY=your_openai_key (if using AI features)
    - Want to override the settings? `N`
 
 5. **Add Environment Variables**
+
    ```bash
    vercel env add NEXT_PUBLIC_SUPABASE_URL
    vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
@@ -100,7 +105,7 @@ OPENAI_KEY=your_openai_key (if using AI features)
 2. **Test Your Application**
    - Visit your deployment URL
    - Test the three implemented features:
-     1. Study Group Management
+     1. group chat Management
      2. Shared Notes Board with File Uploads
      3. User Authentication
 
@@ -119,21 +124,25 @@ OPENAI_KEY=your_openai_key (if using AI features)
 ## Troubleshooting
 
 ### Build Fails
+
 - Check that all dependencies are in `package.json`
 - Verify environment variables are set correctly
 - Review build logs in Vercel dashboard
 
 ### Database Connection Issues
+
 - Ensure `DATABASE_URL` is correct
 - Check Supabase project is active
 - Verify database tables exist
 
 ### File Upload Issues
+
 - Confirm Supabase Storage bucket `group-files` exists
 - Check bucket is set to public
 - Verify storage policies allow uploads
 
 ### Realtime Not Working
+
 - Ensure Supabase Realtime is enabled for your project
 - Check that table replication is enabled for `messages` table
 
@@ -149,6 +158,7 @@ OPENAI_KEY=your_openai_key (if using AI features)
 To redeploy after making changes:
 
 1. **Push to GitHub**
+
    ```bash
    git add .
    git commit -m "Your commit message"
@@ -167,6 +177,7 @@ To redeploy after making changes:
 ## Getting Your Deployment URL
 
 Your deployment URL will be in the format:
+
 - Production: `https://your-project-name.vercel.app`
 - Preview: `https://your-project-name-git-branch.vercel.app`
 

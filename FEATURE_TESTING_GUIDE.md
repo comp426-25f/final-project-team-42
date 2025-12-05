@@ -1,6 +1,7 @@
 # Feature Testing Guide for F02 Submission
 
 ## Overview
+
 This guide provides step-by-step instructions for testing the three implemented features for the F02 Development Sprint.
 
 ---
@@ -8,6 +9,7 @@ This guide provides step-by-step instructions for testing the three implemented 
 ## Feature 1: User Authentication & Profile Management
 
 ### Description
+
 Users can sign up, log in, and manage their profiles with persistent authentication across sessions.
 
 ### How to Test
@@ -41,6 +43,7 @@ Users can sign up, log in, and manage their profiles with persistent authenticat
    - Navigate to the app - you should still be logged in
 
 ### Expected Behavior
+
 - ✅ New users can create accounts
 - ✅ Users can log in with correct credentials
 - ✅ Invalid credentials show error messages
@@ -49,19 +52,20 @@ Users can sign up, log in, and manage their profiles with persistent authenticat
 
 ---
 
-## Feature 2: Study Group Management
+## Feature 2: group chat Management
 
 ### Description
-Users can create study groups, view group details, and see member/resource counts.
+
+Users can create group chat, view group details, and see member/resource counts.
 
 ### How to Test
 
 1. **View Dashboard**
    - Log in to your account
    - Navigate to `/dashboard`
-   - You should see the study groups interface
+   - You should see the group chat interface
 
-2. **Create a New Study Group**
+2. **Create a New group chat**
    - Click the "+ Create Group" button
    - Fill in the form:
      - Course: `COMP 426`
@@ -71,7 +75,7 @@ Users can create study groups, view group details, and see member/resource count
    - The new group should appear in your groups list
 
 3. **View Group Details**
-   - Click on any study group card
+   - Click on any group chat card
    - You should be redirected to `/groups/[id]`
    - Group name and description should be displayed
    - You should see the "Shared Notes Board" section
@@ -83,7 +87,8 @@ Users can create study groups, view group details, and see member/resource count
      - Last activity timestamp
 
 ### Expected Behavior
-- ✅ Users can create new study groups
+
+- ✅ Users can create new group chats
 - ✅ Groups display with correct information
 - ✅ Clicking a group navigates to group detail page
 - ✅ Group statistics update dynamically
@@ -94,12 +99,13 @@ Users can create study groups, view group details, and see member/resource count
 ## Feature 3: Shared Notes Board with File Uploads
 
 ### Description
-Each study group has a shared notes board where members can post text messages and upload files (PDFs, images). Files are stored in Supabase Storage and updates appear in real-time.
+
+Each group chat has a shared notes board where members can post text messages and upload files (PDFs, images). Files are stored in Supabase Storage and updates appear in real-time.
 
 ### How to Test
 
 1. **Access Notes Board**
-   - Navigate to any study group page (`/groups/[id]`)
+   - Navigate to any group chat page (`/groups/[id]`)
    - Scroll to the "Shared Notes Board" section
    - You should see a message input area and upload button
 
@@ -146,6 +152,7 @@ Each study group has a shared notes board where members can post text messages a
    - Nothing should happen (validation prevents empty posts)
 
 ### Expected Behavior
+
 - ✅ Users can post text messages
 - ✅ Users can upload images (JPG, PNG, GIF, WebP)
 - ✅ Users can upload PDF files
@@ -162,20 +169,25 @@ Each study group has a shared notes board where members can post text messages a
 ## Additional Testing Notes
 
 ### Browser Compatibility
+
 Test in multiple browsers:
+
 - Chrome/Edge (recommended)
 - Firefox
 - Safari
 
 ### Mobile Responsiveness
+
 While not required for F02, the app should be accessible on mobile devices.
 
 ### Database Persistence
+
 - All data (users, groups, messages, files) persists in Supabase
 - Refresh the page to verify data is saved
 - Log out and log back in to verify data persistence
 
 ### File Storage
+
 - Files are stored in Supabase Storage bucket: `group-files`
 - Files are organized by group ID
 - Public URLs are generated for file access
@@ -185,6 +197,7 @@ While not required for F02, the app should be accessible on mobile devices.
 ## Known Limitations (F02 Sprint)
 
 These are acceptable for F02 and will be addressed in F03:
+
 - PDF thumbnails not generated (shows link instead)
 - Upload progress bar not implemented (only shows disabled state)
 - Some ESLint warnings present (not affecting functionality)
@@ -195,21 +208,25 @@ These are acceptable for F02 and will be addressed in F03:
 ## Troubleshooting
 
 ### "Unauthorized" Errors
+
 - Make sure you're logged in
 - Try logging out and logging back in
 - Check that Supabase environment variables are set
 
 ### Files Not Uploading
+
 - Ensure file is under 10MB
 - Check file type is supported (images or PDF)
 - Verify Supabase Storage bucket exists and is public
 
 ### Messages Not Appearing
+
 - Refresh the page
 - Check browser console for errors
 - Verify Supabase Realtime is enabled
 
 ### Build/Deployment Issues
+
 - Ensure all environment variables are set in Vercel
 - Check build logs in Vercel dashboard
 - Verify Supabase project is active
@@ -219,6 +236,7 @@ These are acceptable for F02 and will be addressed in F03:
 ## Contact Information
 
 For questions or issues during grading, please refer to:
+
 - GitHub Repository: [Link to your repo]
 - Project Board: [Link to your project board]
 - Deployment URL: [Your Vercel URL]
@@ -231,7 +249,7 @@ For questions or issues during grading, please refer to:
 - [ ] User can log in with credentials
 - [ ] User can log out
 - [ ] Session persists across refreshes
-- [ ] User can create study groups
+- [ ] User can create group chats
 - [ ] Groups display on dashboard
 - [ ] User can navigate to group detail page
 - [ ] User can post text messages to notes board

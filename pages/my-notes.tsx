@@ -321,10 +321,10 @@ export default function MyNotesPage() {
                     <button
                       onClick={() => router.push("/study-groups")}
                       className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
-                      title="Study Groups"
+                      title="Group Chats"
                     >
                       <Users className="h-5 w-5 flex-shrink-0" />
-                      {!isSidebarCollapsed && <span>Study Groups</span>}
+                      {!isSidebarCollapsed && <span>Group Chats</span>}
                     </button>
                   </li>
                   <li>
@@ -337,16 +337,7 @@ export default function MyNotesPage() {
                       {!isSidebarCollapsed && <span>AI Assistant</span>}
                     </button>
                   </li>
-                  <li>
-                    <button
-                      onClick={() => router.push("/group-chat")}
-                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
-                      title="Group Chat"
-                    >
-                      <MessageSquare className="h-5 w-5 flex-shrink-0" />
-                      {!isSidebarCollapsed && <span>Group Chat</span>}
-                    </button>
-                  </li>
+                  
                   <li>
                     <button
                       onClick={() => router.push("/my-notes")}
@@ -706,6 +697,7 @@ export default function MyNotesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
     </div>
   );
 }

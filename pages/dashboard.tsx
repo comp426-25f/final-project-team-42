@@ -353,10 +353,10 @@ export default function DashboardPage() {
                       <button
                         onClick={() => router.push("/study-groups")}
                         className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
-                        title="Study Groups"
+                        title="Group Chats"
                       >
                         <Users className="h-5 w-5 flex-shrink-0" />
-                        <span>Study Groups</span>
+                        <span>Group Chats</span>
                       </button>
                     </li>
                     <li>
@@ -369,16 +369,7 @@ export default function DashboardPage() {
                         <span>AI Assistant</span>
                       </button>
                     </li>
-                    <li>
-                      <button
-                        onClick={() => router.push("/group-chat")}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
-                        title="Group Chat"
-                      >
-                        <MessageSquare className="h-5 w-5 flex-shrink-0" />
-                        <span>Group Chat</span>
-                      </button>
-                    </li>
+                   
                     <li>
                       <button
                         onClick={() => router.push("/my-notes")}
@@ -442,35 +433,35 @@ export default function DashboardPage() {
             Welcome, {userName}!
           </h1>
           <p className="text-gray-600">
-            Here&apos;s what&apos;s happening with your study groups today.
+            Here&apos;s what&apos;s happening with your group chats today.
           </p>
         </div>
 
-        {/* Study Groups Section */}
+        {/* Group Chats Section */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Study Groups</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Group Chats</h2>
               <p className="text-gray-600 mt-1">
                 Join course-specific groups to collaborate with classmates
               </p>
             </div>
-            <div className="flex gap-3">
-              <Button
-                onClick={() => setIsCreateGroupOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create Group
-              </Button>
-              <Button
-                onClick={() => setIsJoinGroupOpen(true)}
-                variant="outline"
-                className="border-gray-300"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Join Group
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setIsCreateGroupOpen(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Group
+                </Button>
+                <Button
+                  onClick={() => setIsJoinGroupOpen(true)}
+                  variant="outline"
+                  className="border-gray-300 text-black hover:bg-gray-100"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Join Group
+                </Button>
             </div>
           </div>
 
@@ -577,7 +568,7 @@ export default function DashboardPage() {
             <TabsContent value="my-groups" className="mt-6">
               {filteredStudyGroups.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
-                  <p>Create your first study group!</p>
+                  <p>Create your first group chats!</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -639,7 +630,7 @@ export default function DashboardPage() {
             {/* Discover Tab */}
             <TabsContent value="discover" className="mt-6">
               <div className="text-center py-12 text-gray-500">
-                <p>Discover new study groups coming soon...</p>
+                <p>Discover new group chats coming soon...</p>
               </div>
             </TabsContent>
 
@@ -657,9 +648,9 @@ export default function DashboardPage() {
       <Dialog open={isCreateGroupOpen} onOpenChange={setIsCreateGroupOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Create Study Group</DialogTitle>
+            <DialogTitle>Create Group Chat</DialogTitle>
             <DialogDescription>
-              Start a new study group for your course
+              Start a new group chat for your course
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -667,7 +658,7 @@ export default function DashboardPage() {
               <Label htmlFor="group-name">Group Name</Label>
               <Input
                 id="group-name"
-                placeholder="e.g., COMP 110 Study Group"
+                placeholder="e.g., COMP 110 Group Chat"
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
               />
@@ -739,9 +730,9 @@ export default function DashboardPage() {
       <Dialog open={isJoinGroupOpen} onOpenChange={setIsJoinGroupOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Join a Study Group</DialogTitle>
+            <DialogTitle>Join a Group Chat</DialogTitle>
             <DialogDescription>
-              Join a study group for your course
+              Join a group chat for your course
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
