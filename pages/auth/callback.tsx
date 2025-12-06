@@ -1,13 +1,14 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { createSupabaseComponentClient } from '@/utils/supabase/clients/component';
+import type { GetServerSideProps } from 'next';
 
 export default function AuthCallback() {
   const router = useRouter();
-  const supabase = createSupabaseComponentClient();
 
   useEffect(() => {
     const handleCallback = async () => {
+      const supabase = createSupabaseComponentClient();
       // The session is automatically handled by Supabase
       // Just redirect to dashboard
       const { data: { session } } = await supabase.auth.getSession();
@@ -20,7 +21,7 @@ export default function AuthCallback() {
     };
 
     handleCallback();
-  }, [router, supabase]);
+  }, [router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">
@@ -31,3 +32,10 @@ export default function AuthCallback() {
     </div>
   );
 }
+
+// Force this page to be server-rendered, not statically generated
+export const getServerSideProps: GetServerSideProps = async () => {
+  return {
+    props: {},
+  };
+};
