@@ -99,6 +99,18 @@ export default function MyNotesPage() {
       // Convert Supabase UUID to integer ID for database lookup
       const userId = parseInt(user.id.substring(0, 8), 16);
       
+      // Fetch user profile data
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("name, email")
+        .eq("id", userId)
+        .single();
+      
+      if (!userError && userData) {
+        setUserName(userData.name || "");
+        setUserEmail(userData.email || "");
+      }
+      
       // Fetch personal notes (group_id is null) for the current user
       const { data: personalNotes, error: personalError } = await supabase
         .from("messages")

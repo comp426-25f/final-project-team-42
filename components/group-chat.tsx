@@ -379,7 +379,7 @@ useEffect(() => {
 
   return (
     <div className="flex h-full gap-4">
-    <div className="flex flex-grow-3 flex-col h-full border rounded-lg overflow-hidden bg-white">
+    <div className="flex flex-grow-3 flex-col h-full border border-border rounded-lg overflow-hidden bg-card">
 
       {/* MESSAGE LIST */}
       <div className="flex-1 overflow-y-auto">
@@ -410,8 +410,8 @@ useEffect(() => {
 
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="font-semibold">{msg.author?.name}</p>
-                    <span className="text-xs text-gray-500">
+                    <p className="font-semibold text-foreground">{msg.author?.name}</p>
+                    <span className="text-xs text-muted-foreground">
                       {formatTime(msg.created_at)}
                     </span>
                     {authorId != null && msg.author_id === authorId && (
@@ -426,7 +426,7 @@ useEffect(() => {
                     )}
                   </div>
 
-                  <p className="mt-1 whitespace-pre-wrap break-words">
+                  <p className="mt-1 whitespace-pre-wrap break-words text-foreground">
                     {msg.message}
                   </p>
 
@@ -461,7 +461,7 @@ useEffect(() => {
       </div>
 
       {/* COMPOSER BAR */}
-      <div className="border-t p-4 bg-white">
+      <div className="border-t border-border p-4 bg-card">
         <div className="flex gap-3 items-end">
           <Textarea
             value={draftText}
@@ -525,10 +525,10 @@ useEffect(() => {
         )}
       </div>
     </div>
-    <div className="border rounded-lg p-4 mb-4 bg-white">
-  <h3 className="font-semibold mb-2">Active Members</h3>
+    <div className="border border-border rounded-lg p-4 mb-4 bg-card">
+  <h3 className="font-semibold mb-2 text-foreground">Active Members</h3>
   {activeMembers.length === 0 ? (
-    <p className="text-sm text-gray-500">No active members</p>
+    <p className="text-sm text-muted-foreground">No active members</p>
   ) : (
     activeMembers.map((m) => (
       <div key={m.id} className="flex items-center gap-2 py-1">
@@ -536,15 +536,15 @@ useEffect(() => {
           <AvatarImage src={m.avatar_url ?? undefined} />
           <AvatarFallback>{m.name[0]}</AvatarFallback>
         </Avatar>
-        <span className="text-sm">{m.name}</span>
+        <span className="text-sm text-foreground">{m.name}</span>
         <span className="text-green-500 text-xs">● online</span>
       </div>
     ))
   )}
 
-  <h3 className="font-semibold mt-4 mb-2">Offline Members</h3>
+  <h3 className="font-semibold mt-4 mb-2 text-foreground">Offline Members</h3>
   {inactiveMembers.length === 0 ? (
-    <p className="text-sm text-gray-500">Everyone is online!</p>
+    <p className="text-sm text-muted-foreground">Everyone is online!</p>
   ) : (
     inactiveMembers.map((m) => (
       <div key={m.id} className="flex items-center gap-2 py-1">
@@ -552,7 +552,7 @@ useEffect(() => {
           <AvatarImage src={m.avatar_url ?? undefined} />
           <AvatarFallback>{m.name[0]}</AvatarFallback>
         </Avatar>
-        <span className="text-sm">{m.name}</span>
+        <span className="text-sm text-foreground">{m.name}</span>
       </div>
     ))
   )}

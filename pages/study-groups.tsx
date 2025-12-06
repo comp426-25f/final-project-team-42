@@ -44,6 +44,7 @@ import {
 
 import type { Subject } from "@/server/models/auth";
 import { GroupChat, GroupChatGroup } from "@/components/group-chat";
+import { ModeToggle } from "@/components/theme/mode-toggle";
 
 type Group = {
   id: number;
@@ -362,7 +363,7 @@ export default function GroupsPage({
 
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    <div className="min-h-screen flex bg-background">
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 h-screen flex flex-col transition-all duration-300 z-50">
               <Collapsible
@@ -492,15 +493,16 @@ export default function GroupsPage({
 
       {/* Main content */}
       <div className="flex-1 ml-16 md:ml-64">
-        <header className="border-b border-gray-200 bg-white">
+        <header className="border-b border-border bg-card">
           <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Group Chats</h1>
-              <p className="text-sm text-gray-600">
+              <h1 className="text-2xl font-bold text-foreground">Group Chats</h1>
+              <p className="text-sm text-muted-foreground">
                 Real-time discussions with your study groups.
               </p>
             </div>
             <div className="flex items-center gap-3">
+              <ModeToggle />
               {groups.length > 0 && (
                 <Select
                   value={selectedGroupId ? String(selectedGroupId) : undefined}
@@ -534,7 +536,6 @@ export default function GroupsPage({
               <Button
                 variant="outline"
                 onClick={() => setIsJoinGroupOpen(true)}
-                className="border-gray-300 text-black"
               >
                 Join Group
               </Button>
@@ -552,7 +553,7 @@ export default function GroupsPage({
                 authorId={authorId}
               />
             ) : (
-              <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 text-sm text-gray-600">
+              <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-border bg-muted text-sm text-muted-foreground">
                 Select a group from the dropdown above, or join/create one to
                 start chatting.
               </div>
