@@ -35,7 +35,7 @@ export default function GroupPage({ group, user, authorId }: GroupPageProps) {
         </Button>
         <h1 className="text-3xl font-bold">{group.name}</h1>
         {group.description && (
-          <p className="mt-2 text-muted-foreground">{group.description}</p>
+          <p className="text-muted-foreground mt-2">{group.description}</p>
         )}
       </div>
 

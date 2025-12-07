@@ -17,8 +17,20 @@ import { Input } from "../ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import {
   Brain,
   FileText,
@@ -54,7 +66,9 @@ export default function AIStudyHelper() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<AIResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
+  const [selectedAnswers, setSelectedAnswers] = useState<
+    Record<number, number>
+  >({});
   const [flippedCards, setFlippedCards] = useState<Record<number, boolean>>({});
   const [provider, setProvider] = useState<"openai" | "gemini">("gemini");
   const [apiKey, setApiKey] = useState("");
@@ -81,13 +95,17 @@ export default function AIStudyHelper() {
   // Load API key and provider from localStorage on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedProvider = localStorage.getItem("ai_provider") as "openai" | "gemini";
-      const savedKey = localStorage.getItem(`${savedProvider || "gemini"}_api_key`);
-      
+      const savedProvider = localStorage.getItem("ai_provider") as
+        | "openai"
+        | "gemini";
+      const savedKey = localStorage.getItem(
+        `${savedProvider || "gemini"}_api_key`,
+      );
+
       if (savedProvider) {
         setProvider(savedProvider);
       }
-      
+
       if (savedKey) {
         setApiKey(savedKey);
       } else {
@@ -230,34 +248,43 @@ export default function AIStudyHelper() {
           AI Study Helper
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-purple-500" />
             AI Study Helper
           </DialogTitle>
           <DialogDescription>
-            Paste your notes to generate summaries, quiz questions, and flashcards
+            Paste your notes to generate summaries, quiz questions, and
+            flashcards
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* API Key Section */}
           {showApiKeyInput ? (
-            <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
-              <CardContent className="p-4 space-y-3">
+            <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+              <CardContent className="space-y-3 p-4">
                 <div className="flex items-start gap-2">
-                  <Sparkles className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <Sparkles className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600" />
                   <div className="flex-1">
-                    <h3 className="font-semibold text-sm mb-1">AI Provider API Key Required</h3>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Choose your AI provider and enter your API key. Your key is stored locally in your browser only.
+                    <h3 className="mb-1 text-sm font-semibold">
+                      AI Provider API Key Required
+                    </h3>
+                    <p className="text-muted-foreground mb-3 text-xs">
+                      Choose your AI provider and enter your API key. Your key
+                      is stored locally in your browser only.
                     </p>
-                    
+
                     {/* Provider Selection */}
                     <div className="mb-3">
-                      <Label className="text-xs mb-1">Select AI Provider</Label>
-                      <Select value={provider} onValueChange={(value) => handleProviderChange(value as "openai" | "gemini")}>
+                      <Label className="mb-1 text-xs">Select AI Provider</Label>
+                      <Select
+                        value={provider}
+                        onValueChange={(value) =>
+                          handleProviderChange(value as "openai" | "gemini")
+                        }
+                      >
                         <SelectTrigger className="w-full">
                           <SelectValue />
                         </SelectTrigger>
@@ -265,13 +292,19 @@ export default function AIStudyHelper() {
                           <SelectItem value="gemini">
                             <div className="flex flex-col items-start">
                               <span className="font-medium">Google Gemini</span>
-                              <span className="text-xs text-muted-foreground">FREE - 1,500 requests/day</span>
+                              <span className="text-muted-foreground text-xs">
+                                FREE - 1,500 requests/day
+                              </span>
                             </div>
                           </SelectItem>
                           <SelectItem value="openai">
                             <div className="flex flex-col items-start">
-                              <span className="font-medium">OpenAI GPT-3.5</span>
-                              <span className="text-xs text-muted-foreground">Paid - ~$0.002/request</span>
+                              <span className="font-medium">
+                                OpenAI GPT-3.5
+                              </span>
+                              <span className="text-muted-foreground text-xs">
+                                Paid - ~$0.002/request
+                              </span>
                             </div>
                           </SelectItem>
                         </SelectContent>
@@ -282,9 +315,13 @@ export default function AIStudyHelper() {
                     <div className="flex gap-2">
                       <Input
                         type="password"
-                        placeholder={provider === "gemini" ? "AIza..." : "sk-proj-..."}
+                        placeholder={
+                          provider === "gemini" ? "AIza..." : "sk-proj-..."
+                        }
                         value={apiKey}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApiKey(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setApiKey(e.target.value)
+                        }
                         className="flex-1"
                       />
                       <Button
@@ -295,9 +332,9 @@ export default function AIStudyHelper() {
                         Save Key
                       </Button>
                     </div>
-                    
+
                     {/* Provider-specific instructions */}
-                    <p className="text-xs text-muted-foreground mt-2">
+                    <p className="text-muted-foreground mt-2 text-xs">
                       {provider === "gemini" ? (
                         <>
                           Get your FREE Gemini key from:{" "}
@@ -329,11 +366,12 @@ export default function AIStudyHelper() {
               </CardContent>
             </Card>
           ) : (
-            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+            <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
                 <span className="text-sm text-green-800 dark:text-green-200">
-                  {provider === "gemini" ? "Gemini" : "OpenAI"} API Key configured ({apiKey.substring(0, 8)}...)
+                  {provider === "gemini" ? "Gemini" : "OpenAI"} API Key
+                  configured ({apiKey.substring(0, 8)}...)
                 </span>
               </div>
               <div className="flex gap-2">
@@ -370,15 +408,15 @@ export default function AIStudyHelper() {
                   rows={10}
                   className="mt-2"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-muted-foreground mt-1 text-xs">
                   {inputText.length} / 15,000 characters
                 </p>
               </div>
 
               {error && (
-                <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3 flex items-start gap-2">
-                  <XCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-destructive">{error}</p>
+                <div className="bg-destructive/10 border-destructive/20 flex items-start gap-2 rounded-md border p-3">
+                  <XCircle className="text-destructive mt-0.5 h-5 w-5 flex-shrink-0" />
+                  <p className="text-destructive text-sm">{error}</p>
                 </div>
               )}
 
@@ -438,7 +476,7 @@ export default function AIStudyHelper() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
                       <p className="whitespace-pre-wrap">{result.summary}</p>
                     </div>
                   </CardContent>
@@ -459,7 +497,10 @@ export default function AIStudyHelper() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {result.quiz.map((q, idx) => (
-                      <div key={idx} className="border rounded-lg p-4 space-y-3">
+                      <div
+                        key={idx}
+                        className="space-y-3 rounded-lg border p-4"
+                      >
                         <p className="font-medium">
                           {idx + 1}. {q.question}
                         </p>
@@ -467,7 +508,8 @@ export default function AIStudyHelper() {
                           {q.options.map((option, optIdx) => {
                             const isSelected = selectedAnswers[idx] === optIdx;
                             const isCorrect = q.correctAnswer === optIdx;
-                            const showResult = selectedAnswers[idx] !== undefined;
+                            const showResult =
+                              selectedAnswers[idx] !== undefined;
 
                             return (
                               <button
@@ -478,13 +520,13 @@ export default function AIStudyHelper() {
                                     [idx]: optIdx,
                                   }))
                                 }
-                                className={`w-full text-left p-3 rounded border transition-colors ${
+                                className={`w-full rounded border p-3 text-left transition-colors ${
                                   showResult && isCorrect
-                                    ? "bg-green-50 border-green-500 dark:bg-green-950"
+                                    ? "border-green-500 bg-green-50 dark:bg-green-950"
                                     : showResult && isSelected
-                                      ? "bg-red-50 border-red-500 dark:bg-red-950"
+                                      ? "border-red-500 bg-red-50 dark:bg-red-950"
                                       : isSelected
-                                        ? "bg-blue-50 border-blue-500 dark:bg-blue-950"
+                                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
                                         : "hover:bg-muted"
                                 }`}
                               >
@@ -501,12 +543,13 @@ export default function AIStudyHelper() {
                             );
                           })}
                         </div>
-                        {selectedAnswers[idx] !== undefined && q.explanation && (
-                          <div className="bg-muted p-3 rounded text-sm">
-                            <p className="font-medium mb-1">Explanation:</p>
-                            <p>{q.explanation}</p>
-                          </div>
-                        )}
+                        {selectedAnswers[idx] !== undefined &&
+                          q.explanation && (
+                            <div className="bg-muted rounded p-3 text-sm">
+                              <p className="mb-1 font-medium">Explanation:</p>
+                              <p>{q.explanation}</p>
+                            </div>
+                          )}
                       </div>
                     ))}
                   </CardContent>
@@ -526,24 +569,26 @@ export default function AIStudyHelper() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       {result.flashcards.map((card, idx) => (
                         <div
                           key={idx}
                           onClick={() => toggleFlashcard(idx)}
-                          className="cursor-pointer h-40 perspective-1000"
+                          className="perspective-1000 h-40 cursor-pointer"
                         >
                           <div
-                            className={`relative w-full h-full transition-transform duration-500 transform-style-3d ${
+                            className={`transform-style-3d relative h-full w-full transition-transform duration-500 ${
                               flippedCards[idx] ? "rotate-y-180" : ""
                             }`}
                           >
                             {/* Front of card */}
-                            <div className="absolute inset-0 backface-hidden rounded-lg border-2 border-primary bg-card p-4 flex items-center justify-center">
-                              <p className="text-center font-medium">{card.front}</p>
+                            <div className="border-primary bg-card absolute inset-0 flex items-center justify-center rounded-lg border-2 p-4 backface-hidden">
+                              <p className="text-center font-medium">
+                                {card.front}
+                              </p>
                             </div>
                             {/* Back of card */}
-                            <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-lg border-2 border-secondary bg-secondary/20 p-4 flex items-center justify-center">
+                            <div className="border-secondary bg-secondary/20 absolute inset-0 flex rotate-y-180 items-center justify-center rounded-lg border-2 p-4 backface-hidden">
                               <p className="text-center">{card.back}</p>
                             </div>
                           </div>
@@ -554,7 +599,11 @@ export default function AIStudyHelper() {
                 </Card>
               )}
 
-              <Button onClick={handleReset} variant="outline" className="w-full">
+              <Button
+                onClick={handleReset}
+                variant="outline"
+                className="w-full"
+              >
                 Generate Another
               </Button>
             </div>
@@ -564,4 +613,3 @@ export default function AIStudyHelper() {
     </Dialog>
   );
 }
-

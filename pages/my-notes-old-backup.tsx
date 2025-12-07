@@ -1,10 +1,33 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import { Book, FileText, Upload, File, Image as ImageIcon, X, Clock, Search, Plus, Share2, Users, Sparkles, MessageSquare, Settings, Home } from "lucide-react";
+import {
+  Book,
+  FileText,
+  Upload,
+  File,
+  Image as ImageIcon,
+  X,
+  Clock,
+  Search,
+  Plus,
+  Share2,
+  Users,
+  Sparkles,
+  MessageSquare,
+  Settings,
+  Home,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createSupabaseComponentClient } from "@/utils/supabase/clients/component";
@@ -38,16 +61,24 @@ export default function MyNotesPage() {
     fetchNotes();
     const channel = supabase
       .channel("notes-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => fetchNotes())
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "messages" },
+        () => fetchNotes(),
+      )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchNotes = async () => {
     try {
       const { data, error } = await supabase
         .from("messages")
-        .select("*, author:users!messages_author_id_fkey(name), group:groups(name)")
+        .select(
+          "*, author:users!messages_author_id_fkey(name), group:groups(name)",
+        )
         .order("created_at", { ascending: false });
       if (error) throw error;
       setNotes(data || []);
@@ -61,9 +92,21 @@ export default function MyNotesPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { alert("File must be < 10MB"); return; }
-    const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf"];
-    if (!validTypes.includes(file.type)) { alert("Only images and PDFs allowed"); return; }
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File must be < 10MB");
+      return;
+    }
+    const validTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "application/pdf",
+    ];
+    if (!validTypes.includes(file.type)) {
+      alert("Only images and PDFs allowed");
+      return;
+    }
     setSelectedFile(file);
     if (file.type.startsWith("image/")) {
       const reader = new FileReader();
@@ -80,13 +123,18 @@ export default function MyNotesPage() {
       const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
       const reader = new FileReader();
       const base64 = await new Promise<string>((resolve) => {
-        reader.onloadend = () => resolve((reader.result as string).split(",")[1]);
+        reader.onloadend = () =>
+          resolve((reader.result as string).split(",")[1]);
         reader.readAsDataURL(file);
       });
       const response = await fetch("/api/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ file: base64, fileName, contentType: file.type }),
+        body: JSON.stringify({
+          file: base64,
+          fileName,
+          contentType: file.type,
+        }),
       });
       if (!response.ok) throw new Error("Upload failed");
       const { url } = await response.json();
@@ -99,13 +147,19 @@ export default function MyNotesPage() {
   };
 
   const handleCreateNote = async () => {
-    if (!newNote.message.trim() && !selectedFile) { alert("Enter message or select file"); return; }
+    if (!newNote.message.trim() && !selectedFile) {
+      alert("Enter message or select file");
+      return;
+    }
     setUploading(true);
     try {
       let attachmentUrl = null;
       if (selectedFile) {
         attachmentUrl = await uploadFile(selectedFile);
-        if (!attachmentUrl) { setUploading(false); return; }
+        if (!attachmentUrl) {
+          setUploading(false);
+          return;
+        }
       }
       const { error } = await supabase.from("messages").insert({
         message: newNote.message || null,
@@ -130,7 +184,10 @@ export default function MyNotesPage() {
   const filteredNotes = notes.filter((note) => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
-    return note.message?.toLowerCase().includes(query) || note.author?.name?.toLowerCase().includes(query);
+    return (
+      note.message?.toLowerCase().includes(query) ||
+      note.author?.name?.toLowerCase().includes(query)
+    );
   });
 
   const getFileType = (url: string | null): "image" | "pdf" | null => {
@@ -149,17 +206,18 @@ export default function MyNotesPage() {
     const diffDays = Math.floor(diffMs / 86400000);
     if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? "s" : ""} ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    if (diffHours < 24)
+      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
     if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
     return date.toLocaleDateString();
   };
 
   return (
-    <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
-      <aside className="w-64 h-screen fixed left-0 top-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
+      <aside className="fixed top-0 left-0 flex h-screen w-64 flex-col border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+        <div className="border-b border-gray-200 p-6 dark:border-gray-700">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600">
               <Book className="h-6 w-6 text-white" />
             </div>
             <span className="text-xl font-bold">StudyBuddy</span>
@@ -167,83 +225,242 @@ export default function MyNotesPage() {
         </div>
         <nav className="flex-1 p-4">
           <div className="mb-6">
-            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Menu</p>
+            <p className="mb-2 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">
+              Menu
+            </p>
             <ul className="space-y-1">
-              <li><button onClick={() => router.push("/dashboard")} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><Home className="h-5 w-5" /><span>Dashboard</span></button></li>
-              <li><button onClick={() => router.push("/study-groups")} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><Users className="h-5 w-5" /><span>Study Groups</span></button></li>
-              <li><button onClick={() => router.push("/ai-assistant")} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><Sparkles className="h-5 w-5" /><span>AI Assistant</span></button></li>
-              <li><button onClick={() => router.push("/group-chat")} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><MessageSquare className="h-5 w-5" /><span>Group Chat</span></button></li>
-              <li><button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-blue-600 dark:text-blue-400 font-medium"><FileText className="h-5 w-5" /><span>My Notes</span></button></li>
+              <li>
+                <button
+                  onClick={() => router.push("/dashboard")}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                  <Home className="h-5 w-5" />
+                  <span>Dashboard</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => router.push("/study-groups")}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                  <Users className="h-5 w-5" />
+                  <span>Study Groups</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => router.push("/ai-assistant")}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                  <Sparkles className="h-5 w-5" />
+                  <span>AI Assistant</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => router.push("/group-chat")}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                  <MessageSquare className="h-5 w-5" />
+                  <span>Group Chat</span>
+                </button>
+              </li>
+              <li>
+                <button className="flex w-full items-center gap-3 rounded-lg bg-gray-100 px-3 py-2 font-medium text-blue-600 dark:bg-gray-700 dark:text-blue-400">
+                  <FileText className="h-5 w-5" />
+                  <span>My Notes</span>
+                </button>
+              </li>
             </ul>
           </div>
           <div>
-            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Account</p>
+            <p className="mb-2 text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">
+              Account
+            </p>
             <ul className="space-y-1">
-              <li><button onClick={() => router.push("/settings")} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><Settings className="h-5 w-5" /><span>Settings</span></button></li>
+              <li>
+                <button
+                  onClick={() => router.push("/settings")}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                  <Settings className="h-5 w-5" />
+                  <span>Settings</span>
+                </button>
+              </li>
             </ul>
           </div>
         </nav>
       </aside>
 
-      <main className="flex-1 ml-64 p-8">
+      <main className="ml-64 flex-1 p-8">
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
+          <div className="mb-2 flex items-center justify-between">
             <h1 className="text-3xl font-bold">My Notes</h1>
-            <Button onClick={() => setIsNewNoteOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
-              <Plus className="h-4 w-4 mr-2" />New Note
+            <Button
+              onClick={() => setIsNewNoteOpen(true)}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              New Note
             </Button>
           </div>
-          <p className="text-gray-600 dark:text-gray-400">Organize and share your study notes</p>
+          <p className="text-gray-600 dark:text-gray-400">
+            Organize and share your study notes
+          </p>
         </div>
 
-        <div className="grid grid-cols-4 gap-6 mb-8">
-          <Card><CardContent className="p-6"><div className="flex items-start justify-between"><div><p className="text-sm font-medium text-gray-600 mb-2">Total Notes</p><p className="text-3xl font-bold">{notes.length}</p></div><FileText className="h-6 w-6 text-gray-400" /></div></CardContent></Card>
-          <Card><CardContent className="p-6"><div className="flex items-start justify-between"><div><p className="text-sm font-medium text-gray-600 mb-2">With Files</p><p className="text-3xl font-bold">{notes.filter((n) => n.attachment_url).length}</p></div><Upload className="h-6 w-6 text-gray-400" /></div></CardContent></Card>
-          <Card><CardContent className="p-6"><div className="flex items-start justify-between"><div><p className="text-sm font-medium text-gray-600 mb-2">Shared</p><p className="text-3xl font-bold">{notes.filter((n) => n.group_id).length}</p></div><Share2 className="h-6 w-6 text-gray-400" /></div></CardContent></Card>
-          <Card><CardContent className="p-6"><div className="flex items-start justify-between"><div><p className="text-sm font-medium text-gray-600 mb-2">Recent</p><p className="text-3xl font-bold">{notes.filter((n) => new Date(n.created_at) > new Date(Date.now() - 86400000)).length}</p></div><Clock className="h-6 w-6 text-gray-400" /></div></CardContent></Card>
+        <div className="mb-8 grid grid-cols-4 gap-6">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="mb-2 text-sm font-medium text-gray-600">
+                    Total Notes
+                  </p>
+                  <p className="text-3xl font-bold">{notes.length}</p>
+                </div>
+                <FileText className="h-6 w-6 text-gray-400" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="mb-2 text-sm font-medium text-gray-600">
+                    With Files
+                  </p>
+                  <p className="text-3xl font-bold">
+                    {notes.filter((n) => n.attachment_url).length}
+                  </p>
+                </div>
+                <Upload className="h-6 w-6 text-gray-400" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="mb-2 text-sm font-medium text-gray-600">
+                    Shared
+                  </p>
+                  <p className="text-3xl font-bold">
+                    {notes.filter((n) => n.group_id).length}
+                  </p>
+                </div>
+                <Share2 className="h-6 w-6 text-gray-400" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="mb-2 text-sm font-medium text-gray-600">
+                    Recent
+                  </p>
+                  <p className="text-3xl font-bold">
+                    {
+                      notes.filter(
+                        (n) =>
+                          new Date(n.created_at) >
+                          new Date(Date.now() - 86400000),
+                      ).length
+                    }
+                  </p>
+                </div>
+                <Clock className="h-6 w-6 text-gray-400" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="mb-6">
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input type="text" placeholder="Search notes..." className="pl-10" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Search notes..."
+              className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-gray-500">Loading...</div>
+          <div className="py-12 text-center text-gray-500">Loading...</div>
         ) : filteredNotes.length === 0 ? (
-          <div className="text-center py-12 text-gray-500"><FileText className="h-12 w-12 mx-auto mb-4 opacity-50" /><p className="text-lg font-medium mb-2">No notes yet</p><p className="text-sm">Create your first note!</p></div>
+          <div className="py-12 text-center text-gray-500">
+            <FileText className="mx-auto mb-4 h-12 w-12 opacity-50" />
+            <p className="mb-2 text-lg font-medium">No notes yet</p>
+            <p className="text-sm">Create your first note!</p>
+          </div>
         ) : (
           <div className="space-y-4">
             {filteredNotes.map((note) => {
               const fileType = getFileType(note.attachment_url);
               return (
-                <Card key={note.id} className="hover:shadow-lg transition-shadow">
+                <Card
+                  key={note.id}
+                  className="transition-shadow hover:shadow-lg"
+                >
                   <CardContent className="p-6">
                     <div className="flex gap-4">
                       {note.attachment_url && (
                         <div className="flex-shrink-0">
                           {fileType === "image" ? (
-                            <img src={note.attachment_url} alt="Attachment" className="w-24 h-24 object-cover rounded-lg border" />
+                            <img
+                              src={note.attachment_url}
+                              alt="Attachment"
+                              className="h-24 w-24 rounded-lg border object-cover"
+                            />
                           ) : fileType === "pdf" ? (
-                            <div className="w-24 h-24 bg-red-100 dark:bg-red-900/20 rounded-lg border border-red-200 flex items-center justify-center">
+                            <div className="flex h-24 w-24 items-center justify-center rounded-lg border border-red-200 bg-red-100 dark:bg-red-900/20">
                               <File className="h-8 w-8 text-red-600" />
                             </div>
                           ) : null}
                         </div>
                       )}
                       <div className="flex-1">
-                        {note.message && <p className="text-gray-900 dark:text-white mb-3 whitespace-pre-wrap">{note.message}</p>}
+                        {note.message && (
+                          <p className="mb-3 whitespace-pre-wrap text-gray-900 dark:text-white">
+                            {note.message}
+                          </p>
+                        )}
                         {note.attachment_url && (
-                          <a href={note.attachment_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 mb-3">
-                            {fileType === "image" ? <><ImageIcon className="h-4 w-4" />View Image</> : <><File className="h-4 w-4" />Download PDF</>}
+                          <a
+                            href={note.attachment_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mb-3 inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700"
+                          >
+                            {fileType === "image" ? (
+                              <>
+                                <ImageIcon className="h-4 w-4" />
+                                View Image
+                              </>
+                            ) : (
+                              <>
+                                <File className="h-4 w-4" />
+                                Download PDF
+                              </>
+                            )}
                           </a>
                         )}
                         <div className="flex items-center gap-4 text-xs text-gray-500">
                           {note.author && <span>{note.author.name}</span>}
-                          {note.group && <div className="flex items-center gap-1"><Share2 className="h-3 w-3" /><span>{note.group.name}</span></div>}
-                          <div className="flex items-center gap-1"><Clock className="h-3 w-3" /><span>{formatDate(note.created_at)}</span></div>
+                          {note.group && (
+                            <div className="flex items-center gap-1">
+                              <Share2 className="h-3 w-3" />
+                              <span>{note.group.name}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            <span>{formatDate(note.created_at)}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -259,36 +476,90 @@ export default function MyNotesPage() {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Create New Note</DialogTitle>
-            <DialogDescription>Add a new study note with optional file attachment</DialogDescription>
+            <DialogDescription>
+              Add a new study note with optional file attachment
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="message">Message</Label>
-              <Textarea id="message" placeholder="Write your notes..." className="min-h-[150px]" value={newNote.message} onChange={(e) => setNewNote({ message: e.target.value })} />
+              <Textarea
+                id="message"
+                placeholder="Write your notes..."
+                className="min-h-[150px]"
+                value={newNote.message}
+                onChange={(e) => setNewNote({ message: e.target.value })}
+              />
             </div>
             <div className="grid gap-2">
               <Label>Attachment (Optional)</Label>
-              <input ref={fileInputRef} type="file" accept="image/*,.pdf" onChange={handleFileSelect} className="hidden" />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,.pdf"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
               {selectedFile ? (
-                <div className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
+                <div className="rounded-lg border p-4">
+                  <div className="mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      {selectedFile.type.startsWith("image/") ? <ImageIcon className="h-5 w-5 text-blue-600" /> : <File className="h-5 w-5 text-red-600" />}
-                      <span className="text-sm font-medium truncate">{selectedFile.name}</span>
+                      {selectedFile.type.startsWith("image/") ? (
+                        <ImageIcon className="h-5 w-5 text-blue-600" />
+                      ) : (
+                        <File className="h-5 w-5 text-red-600" />
+                      )}
+                      <span className="truncate text-sm font-medium">
+                        {selectedFile.name}
+                      </span>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => { setSelectedFile(null); setFilePreview(null); }}><X className="h-4 w-4" /></Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setSelectedFile(null);
+                        setFilePreview(null);
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
-                  {filePreview && <img src={filePreview} alt="Preview" className="w-full h-32 object-cover rounded" />}
+                  {filePreview && (
+                    <img
+                      src={filePreview}
+                      alt="Preview"
+                      className="h-32 w-full rounded object-cover"
+                    />
+                  )}
                 </div>
               ) : (
-                <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full"><Upload className="h-4 w-4 mr-2" />Upload Image or PDF</Button>
+                <Button
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Image or PDF
+                </Button>
               )}
-              <p className="text-xs text-gray-500">Max 10MB. Supported: Images (JPEG, PNG, GIF, WebP) and PDFs</p>
+              <p className="text-xs text-gray-500">
+                Max 10MB. Supported: Images (JPEG, PNG, GIF, WebP) and PDFs
+              </p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsNewNoteOpen(false)} disabled={uploading}>Cancel</Button>
-            <Button onClick={handleCreateNote} className="bg-blue-600 hover:bg-blue-700 text-white" disabled={uploading || (!newNote.message.trim() && !selectedFile)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsNewNoteOpen(false)}
+              disabled={uploading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateNote}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              disabled={uploading || (!newNote.message.trim() && !selectedFile)}
+            >
               {uploading ? "Creating..." : "Create Note"}
             </Button>
           </DialogFooter>

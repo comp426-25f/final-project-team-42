@@ -11,7 +11,7 @@ export const config = {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ) {
   if (req.method !== "POST") {
     res.setHeader("Allow", ["POST"]);
@@ -32,17 +32,20 @@ export default async function handler(
 
   try {
     const { file, fileName, contentType, groupId } = req.body;
-    
-    console.log("Upload request received:", { 
-      hasFile: !!file, 
-      fileName, 
-      contentType, 
+
+    console.log("Upload request received:", {
+      hasFile: !!file,
+      fileName,
+      contentType,
       groupId,
-      fileLength: file?.length 
+      fileLength: file?.length,
     });
 
     if (!file || !fileName) {
-      console.error("Missing required fields:", { hasFile: !!file, hasFileName: !!fileName });
+      console.error("Missing required fields:", {
+        hasFile: !!file,
+        hasFileName: !!fileName,
+      });
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -54,7 +57,9 @@ export default async function handler(
       return res.status(400).json({ error: "File size exceeds 10MB limit" });
     }
 
-    const filePath = groupId ? `${groupId}/${Date.now()}-${fileName}` : `notes/${Date.now()}-${fileName}`;
+    const filePath = groupId
+      ? `${groupId}/${Date.now()}-${fileName}`
+      : `notes/${Date.now()}-${fileName}`;
     const { data, error } = await supabase.storage
       .from("group-files")
       .upload(filePath, buffer, {

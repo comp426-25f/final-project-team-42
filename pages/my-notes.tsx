@@ -1,25 +1,59 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import { 
-  FileText, Upload, File, Image as ImageIcon, X, Clock, Search, 
-  Plus, Share2, Download, Trash2, MoreVertical, Grid, List,
-  Folder, Star, Home, Users, Settings, Book, MessageSquare,
-  Filter, SortAsc, Eye, Sparkles, ChevronRight, PanelLeft
+import {
+  FileText,
+  Upload,
+  File,
+  Image as ImageIcon,
+  X,
+  Clock,
+  Search,
+  Plus,
+  Share2,
+  Download,
+  Trash2,
+  MoreVertical,
+  Grid,
+  List,
+  Folder,
+  Star,
+  Home,
+  Users,
+  Settings,
+  Book,
+  MessageSquare,
+  Filter,
+  SortAsc,
+  Eye,
+  Sparkles,
+  ChevronRight,
+  PanelLeft,
 } from "lucide-react";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "@/components/ui/collapsible";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createSupabaseComponentClient } from "@/utils/supabase/clients/component";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator 
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -36,7 +70,7 @@ interface Document {
   created_at: string;
   author?: { name: string; avatar_url: string | null };
   group?: { name: string };
-  file_type?: 'pdf' | 'image' | 'text' | null;
+  file_type?: "pdf" | "image" | "text" | null;
   file_size?: number;
 }
 
@@ -46,14 +80,14 @@ interface Group {
   description: string | null;
 }
 
-type ViewMode = 'grid' | 'list';
-type FilterType = 'all' | 'personal' | 'shared' | 'recent';
+type ViewMode = "grid" | "list";
+type FilterType = "all" | "personal" | "shared" | "recent";
 
 export default function MyNotesPage() {
   const router = useRouter();
   const supabase = createSupabaseComponentClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
@@ -67,8 +101,8 @@ export default function MyNotesPage() {
   const [newDoc, setNewDoc] = useState({ title: "", message: "" });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [filterType, setFilterType] = useState<FilterType>("all");
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [documentToShare, setDocumentToShare] = useState<Document | null>(null);
   const [userGroups, setUserGroups] = useState<Group[]>([]);
@@ -82,9 +116,15 @@ export default function MyNotesPage() {
     fetchUserGroups();
     const channel = supabase
       .channel("documents-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => fetchDocuments())
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "messages" },
+        () => fetchDocuments(),
+      )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
@@ -93,7 +133,7 @@ export default function MyNotesPage() {
     };
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === "visible") {
         fetchDocuments();
       }
     };
@@ -102,48 +142,52 @@ export default function MyNotesPage() {
       fetchDocuments();
     };
 
-    router.events.on('routeChangeComplete', handleRouteChange);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
+    router.events.on("routeChangeComplete", handleRouteChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
 
     return () => {
-      router.events.off('routeChangeComplete', handleRouteChange);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
+      router.events.off("routeChangeComplete", handleRouteChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [router]);
 
   const fetchDocuments = async () => {
     try {
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         console.error("No user logged in");
         setLoading(false);
         return;
       }
-      
+
       // Convert Supabase UUID to integer ID for database lookup
       const userId = parseInt(user.id.substring(0, 8), 16);
-      
+
       // Fetch user profile data
       const { data: userData, error: userError } = await supabase
         .from("users")
         .select("name, email, avatar_url")
         .eq("id", userId)
         .single();
-      
+
       if (!userError && userData) {
         setUserName(userData.name || "");
         setUserEmail(userData.email || "");
         // Handle avatar URL - check if it's a full URL or a path
         if (userData.avatar_url) {
-          if (userData.avatar_url.startsWith('http')) {
+          if (userData.avatar_url.startsWith("http")) {
             // Already a full URL
             setUserAvatarUrl(userData.avatar_url);
           } else {
             // It's a path, get the public URL from group-files bucket
-            const { data: { publicUrl } } = supabase.storage
+            const {
+              data: { publicUrl },
+            } = supabase.storage
               .from("group-files")
               .getPublicUrl(userData.avatar_url);
             setUserAvatarUrl(publicUrl);
@@ -152,53 +196,60 @@ export default function MyNotesPage() {
           setUserAvatarUrl(null);
         }
       }
-      
+
       // Fetch personal notes (group_id is null) for the current user
       const { data: personalNotes, error: personalError } = await supabase
         .from("messages")
-        .select("*, author:users!messages_author_id_fkey(name, avatar_url), group:groups(name)")
+        .select(
+          "*, author:users!messages_author_id_fkey(name, avatar_url), group:groups(name)",
+        )
         .eq("author_id", userId)
         .is("group_id", null)
         .order("created_at", { ascending: false });
-      
+
       if (personalError) throw personalError;
-      
+
       // Fetch groups where user is a member
       const { data: memberships, error: membershipError } = await supabase
         .from("memberships")
         .select("group_id")
         .eq("user_id", userId);
-      
+
       if (membershipError) throw membershipError;
-      
+
       const userGroupIds = (memberships || []).map((m: any) => m.group_id);
-      
+
       // Fetch group notes from user's groups
       let groupNotes: any[] = [];
       if (userGroupIds.length > 0) {
         const { data: groupData, error: groupError } = await supabase
           .from("messages")
-          .select("*, author:users!messages_author_id_fkey(name, avatar_url), group:groups(name)")
+          .select(
+            "*, author:users!messages_author_id_fkey(name, avatar_url), group:groups(name)",
+          )
           .in("group_id", userGroupIds)
           .not("group_id", "is", null)
           .order("created_at", { ascending: false });
-        
+
         if (groupError) throw groupError;
         groupNotes = groupData || [];
       }
-      
+
       // Combine personal and group notes
       const allNotes = [...(personalNotes || []), ...groupNotes];
-      
+
       const formattedDocs: Document[] = allNotes.map((doc: any) => ({
         ...doc,
-        title: doc.message?.substring(0, 50) || 'Untitled Document',
+        title: doc.message?.substring(0, 50) || "Untitled Document",
         file_type: getFileType(doc.attachment_url),
       }));
-      
+
       // Sort by created_at descending
-      formattedDocs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      
+      formattedDocs.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+
       setDocuments(formattedDocs);
     } catch (error) {
       console.error("Error:", error);
@@ -207,24 +258,31 @@ export default function MyNotesPage() {
     }
   };
 
-  const getFileType = (url: string | null): 'pdf' | 'image' | 'text' | null => {
-    if (!url) return 'text';
-    if (url.match(/\.pdf$/i)) return 'pdf';
-    if (url.match(/\.(jpg|jpeg|png|gif|webp)$/i)) return 'image';
+  const getFileType = (url: string | null): "pdf" | "image" | "text" | null => {
+    if (!url) return "text";
+    if (url.match(/\.pdf$/i)) return "pdf";
+    if (url.match(/\.(jpg|jpeg|png|gif|webp)$/i)) return "image";
     return null;
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { 
-      alert("File must be < 10MB"); 
-      return; 
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File must be < 10MB");
+      return;
     }
-    const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf", "text/plain"];
-    if (!validTypes.includes(file.type)) { 
-      alert("Only images, PDFs, and text files allowed"); 
-      return; 
+    const validTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "application/pdf",
+      "text/plain",
+    ];
+    if (!validTypes.includes(file.type)) {
+      alert("Only images, PDFs, and text files allowed");
+      return;
     }
     setSelectedFile(file);
     if (file.type.startsWith("image/")) {
@@ -252,9 +310,13 @@ export default function MyNotesPage() {
       const response = await fetch("/api/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ file: base64, fileName, contentType: file.type }),
+        body: JSON.stringify({
+          file: base64,
+          fileName,
+          contentType: file.type,
+        }),
       });
-      
+
       if (!response.ok) {
         // Clone the response so we can read it multiple times if needed
         const responseClone = response.clone();
@@ -262,19 +324,21 @@ export default function MyNotesPage() {
         try {
           const errorData = await response.json();
           console.error("Upload failed with data:", errorData);
-          errorMessage = errorData.error || errorData.message || "Upload failed";
+          errorMessage =
+            errorData.error || errorData.message || "Upload failed";
         } catch (e) {
           try {
             const text = await responseClone.text();
             console.error("Upload failed with text:", text);
-            errorMessage = text || `HTTP ${response.status}: ${response.statusText}`;
+            errorMessage =
+              text || `HTTP ${response.status}: ${response.statusText}`;
           } catch (e2) {
             errorMessage = `HTTP ${response.status}: ${response.statusText}`;
           }
         }
         throw new Error(errorMessage);
       }
-      
+
       const data = await response.json();
       console.log("Upload successful:", data);
       return data.url;
@@ -286,29 +350,31 @@ export default function MyNotesPage() {
   };
 
   const handleCreateDocument = async () => {
-    if (!newDoc.title.trim() && !selectedFile) { 
-      alert("Enter a title or select a file"); 
-      return; 
+    if (!newDoc.title.trim() && !selectedFile) {
+      alert("Enter a title or select a file");
+      return;
     }
     setUploading(true);
     try {
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         alert("You must be logged in to create a note");
         setUploading(false);
         return;
       }
-      
+
       // Convert Supabase UUID to integer ID for database lookup
       const userId = parseInt(user.id.substring(0, 8), 16);
-      
+
       let attachmentUrl = null;
       if (selectedFile) {
         attachmentUrl = await uploadFile(selectedFile);
-        if (!attachmentUrl) { 
-          setUploading(false); 
-          return; 
+        if (!attachmentUrl) {
+          setUploading(false);
+          return;
         }
       }
       const { error } = await supabase.from("messages").insert({
@@ -333,27 +399,33 @@ export default function MyNotesPage() {
 
   const fetchUserGroups = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
-      
+
       const userId = parseInt(user.id.substring(0, 8), 16);
-      
+
       // Fetch groups where user is a member
       const { data, error } = await supabase
         .from("memberships")
-        .select(`
+        .select(
+          `
           group_id,
           groups (
             id,
             name,
             description
           )
-        `)
+        `,
+        )
         .eq("user_id", userId);
-      
+
       if (error) throw error;
-      
-      const groups = (data || []).map((membership: any) => membership.groups).filter(Boolean);
+
+      const groups = (data || [])
+        .map((membership: any) => membership.groups)
+        .filter(Boolean);
       setUserGroups(groups);
     } catch (error) {
       console.error("Error fetching groups:", error);
@@ -365,18 +437,20 @@ export default function MyNotesPage() {
       alert("Please select a group to share with");
       return;
     }
-    
+
     setSharing(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         alert("You must be logged in to share");
         setSharing(false);
         return;
       }
-      
+
       const userId = parseInt(user.id.substring(0, 8), 16);
-      
+
       // Create a copy of the note in the selected group
       const { error } = await supabase.from("messages").insert({
         message: documentToShare.message,
@@ -384,9 +458,9 @@ export default function MyNotesPage() {
         author_id: userId,
         group_id: selectedGroupId,
       });
-      
+
       if (error) throw error;
-      
+
       alert("Note shared successfully!");
       setIsShareDialogOpen(false);
       setDocumentToShare(null);
@@ -414,14 +488,14 @@ export default function MyNotesPage() {
 
   const filteredDocuments = documents.filter((doc) => {
     // Filter by type
-    if (filterType === 'personal' && doc.group_id !== null) return false;
-    if (filterType === 'shared' && doc.group_id === null) return false;
-    if (filterType === 'recent') {
+    if (filterType === "personal" && doc.group_id !== null) return false;
+    if (filterType === "shared" && doc.group_id === null) return false;
+    if (filterType === "recent") {
       const dayAgo = new Date();
       dayAgo.setDate(dayAgo.getDate() - 1);
       if (new Date(doc.created_at) < dayAgo) return false;
     }
-    
+
     // Filter by search
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
@@ -441,36 +515,43 @@ export default function MyNotesPage() {
     const diffDays = Math.floor(diffMs / 86400000);
     if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? "s" : ""} ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    if (diffHours < 24)
+      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
     if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
     return date.toLocaleDateString();
   };
 
-  const getFileIcon = (fileType: 'pdf' | 'image' | 'text' | null) => {
+  const getFileIcon = (fileType: "pdf" | "image" | "text" | null) => {
     switch (fileType) {
-      case 'pdf': return <FileText className="h-5 w-5 text-red-500" />;
-      case 'image': return <ImageIcon className="h-5 w-5 text-blue-500" />;
-      case 'text': return <File className="h-5 w-5 text-gray-500" />;
-      default: return <File className="h-5 w-5 text-gray-500" />;
+      case "pdf":
+        return <FileText className="h-5 w-5 text-red-500" />;
+      case "image":
+        return <ImageIcon className="h-5 w-5 text-blue-500" />;
+      case "text":
+        return <File className="h-5 w-5 text-gray-500" />;
+      default:
+        return <File className="h-5 w-5 text-gray-500" />;
     }
   };
 
   return (
-    <div className="min-h-screen flex bg-background">
-      <aside className="fixed left-0 top-0 h-screen flex flex-col transition-all duration-300 z-50">
+    <div className="bg-background flex min-h-screen">
+      <aside className="fixed top-0 left-0 z-50 flex h-screen flex-col transition-all duration-300">
         <Collapsible
           open={!isSidebarCollapsed}
           onOpenChange={(open: boolean) => setIsSidebarCollapsed(!open)}
-          className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} h-full bg-card border-r border-border flex flex-col`}
+          className={`${isSidebarCollapsed ? "w-16" : "w-64"} bg-card border-border flex h-full flex-col border-r`}
         >
           {/* Collapse Trigger */}
-          <div className="absolute right-4 top-6 z-10">
+          <div className="absolute top-6 right-4 z-10">
             <CollapsibleTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 p-0 bg-card border border-border"
-                title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                className="bg-card border-border h-8 w-8 border p-0"
+                title={
+                  isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+                }
               >
                 {isSidebarCollapsed ? (
                   <ChevronRight className="h-4 w-4" />
@@ -482,117 +563,138 @@ export default function MyNotesPage() {
             </CollapsibleTrigger>
           </div>
 
-        <CollapsibleContent className="flex-1 flex flex-col h-full">
-          <div>
-            {/* Logo */}
-            <div className="p-6 border-b border-border">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-[#4B9CD3] rounded flex items-center justify-center flex-shrink-0">
-                  <Book className="h-5 w-5 text-white" />
-                </div>
-                {!isSidebarCollapsed && <span className="text-xl font-bold text-foreground whitespace-nowrap">StudyBuddy</span>}
-              </div>
-            </div>
-
-            {/* Menu */}
-            <nav className="p-4 space-y-6">
-              <div>
-                <h3 className={`${isSidebarCollapsed ? 'hidden' : 'block'} text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3`}>
-                  Menu
-                </h3>
-                <ul className="space-y-1">
-                  <li>
-                    <button
-                      onClick={() => router.push("/dashboard")}
-                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:bg-accent transition-colors"
-                      title="Dashboard"
-                    >
-                      <Home className="h-5 w-5 flex-shrink-0" />
-                      {!isSidebarCollapsed && <span>Dashboard</span>}
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => router.push("/study-groups")}
-                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:bg-accent transition-colors"
-                      title="Group Chats"
-                    >
-                      <Users className="h-5 w-5 flex-shrink-0" />
-                      {!isSidebarCollapsed && <span>Group Chats</span>}
-                    </button>
-                  </li>
-                  
-                  <li>
-                    <button
-                      onClick={() => router.push("/my-notes")}
-                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-accent text-foreground font-medium"
-                      title="My Notes"
-                    >
-                      <FileText className="h-5 w-5 flex-shrink-0" />
-                      {!isSidebarCollapsed && <span>My Notes</span>}
-                    </button>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Account */}
-              <div>
-                <h3 className={`${isSidebarCollapsed ? 'hidden' : 'block'} text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3`}>
-                  Account
-                </h3>
-                <ul className="space-y-1">
-                  <li>
-                    <button
-                      onClick={() => router.push("/settings")}
-                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:bg-accent transition-colors"
-                      title="Settings"
-                    >
-                      <Settings className="h-5 w-5 flex-shrink-0" />
-                      {!isSidebarCollapsed && <span>Settings</span>}
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            </nav>
-          </div>
-
-          {!isSidebarCollapsed && (
-            <div className="mt-auto p-4 border-t border-border">
-              <div className="flex items-center gap-3">
-                <Avatar className="w-10 h-10 flex-shrink-0">
-                  <AvatarImage 
-                    src={userAvatarUrl || undefined} 
-                    className="object-cover"
-                  />
-                  <AvatarFallback className="bg-muted">
-                    <span className="text-sm font-semibold text-muted-foreground">
-                      {userName ? userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'US'}
+          <CollapsibleContent className="flex h-full flex-1 flex-col">
+            <div>
+              {/* Logo */}
+              <div className="border-border border-b p-6">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-[#4B9CD3]">
+                    <Book className="h-5 w-5 text-white" />
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <span className="text-foreground text-xl font-bold whitespace-nowrap">
+                      StudyBuddy
                     </span>
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">
-                    {userName || 'User'}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {userEmail || 'user@example.com'}
-                  </p>
+                  )}
                 </div>
               </div>
+
+              {/* Menu */}
+              <nav className="space-y-6 p-4">
+                <div>
+                  <h3
+                    className={`${isSidebarCollapsed ? "hidden" : "block"} text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase`}
+                  >
+                    Menu
+                  </h3>
+                  <ul className="space-y-1">
+                    <li>
+                      <button
+                        onClick={() => router.push("/dashboard")}
+                        className="text-foreground hover:bg-accent flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors"
+                        title="Dashboard"
+                      >
+                        <Home className="h-5 w-5 flex-shrink-0" />
+                        {!isSidebarCollapsed && <span>Dashboard</span>}
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => router.push("/study-groups")}
+                        className="text-foreground hover:bg-accent flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors"
+                        title="Group Chats"
+                      >
+                        <Users className="h-5 w-5 flex-shrink-0" />
+                        {!isSidebarCollapsed && <span>Group Chats</span>}
+                      </button>
+                    </li>
+
+                    <li>
+                      <button
+                        onClick={() => router.push("/my-notes")}
+                        className="bg-accent text-foreground flex w-full items-center gap-3 rounded-lg px-3 py-2 font-medium"
+                        title="My Notes"
+                      >
+                        <FileText className="h-5 w-5 flex-shrink-0" />
+                        {!isSidebarCollapsed && <span>My Notes</span>}
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Account */}
+                <div>
+                  <h3
+                    className={`${isSidebarCollapsed ? "hidden" : "block"} text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase`}
+                  >
+                    Account
+                  </h3>
+                  <ul className="space-y-1">
+                    <li>
+                      <button
+                        onClick={() => router.push("/settings")}
+                        className="text-foreground hover:bg-accent flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors"
+                        title="Settings"
+                      >
+                        <Settings className="h-5 w-5 flex-shrink-0" />
+                        {!isSidebarCollapsed && <span>Settings</span>}
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              </nav>
             </div>
-          )}
-        </CollapsibleContent>
+
+            {!isSidebarCollapsed && (
+              <div className="border-border mt-auto border-t p-4">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10 flex-shrink-0">
+                    <AvatarImage
+                      src={userAvatarUrl || undefined}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-muted">
+                      <span className="text-muted-foreground text-sm font-semibold">
+                        {userName
+                          ? userName
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .toUpperCase()
+                              .slice(0, 2)
+                          : "US"}
+                      </span>
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-foreground truncate text-sm font-medium">
+                      {userName || "User"}
+                    </p>
+                    <p className="text-muted-foreground truncate text-xs">
+                      {userEmail || "user@example.com"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CollapsibleContent>
         </Collapsible>
       </aside>
 
       {/* Main Content */}
-      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
+      <div
+        className={`flex flex-1 flex-col overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? "ml-16" : "ml-64"}`}
+      >
         {/* Header */}
-        <div className="bg-card border-b border-border p-4">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-card border-border border-b p-4">
+          <div className="mb-4 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-foreground">My Documents</h1>
-              <p className="text-sm text-muted-foreground">Organize and share your study materials</p>
+              <h1 className="text-foreground text-2xl font-bold">
+                My Documents
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                Organize and share your study materials
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <ModeToggle />
@@ -606,27 +708,29 @@ export default function MyNotesPage() {
 
           {/* Search and Filters */}
           <div className="flex items-center gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <div className="relative flex-1">
+              <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
                 placeholder="Search documents..."
                 value={searchQuery}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setSearchQuery(e.target.value)
+                }
                 className="pl-10"
               />
             </div>
             <div className="flex items-center gap-2">
               <Button
-                variant={viewMode === 'grid' ? 'default' : 'outline'}
+                variant={viewMode === "grid" ? "default" : "outline"}
                 size="icon"
-                onClick={() => setViewMode('grid')}
+                onClick={() => setViewMode("grid")}
               >
                 <Grid className="h-4 w-4" />
               </Button>
               <Button
-                variant={viewMode === 'list' ? 'default' : 'outline'}
+                variant={viewMode === "list" ? "default" : "outline"}
                 size="icon"
-                onClick={() => setViewMode('list')}
+                onClick={() => setViewMode("list")}
               >
                 <List className="h-4 w-4" />
               </Button>
@@ -635,8 +739,12 @@ export default function MyNotesPage() {
         </div>
 
         {/* Tabs */}
-        <Tabs value={filterType} onValueChange={(v: string) => setFilterType(v as FilterType)} className="flex-1 flex flex-col">
-          <div className="bg-card border-b border-border px-4">
+        <Tabs
+          value={filterType}
+          onValueChange={(v: string) => setFilterType(v as FilterType)}
+          className="flex flex-1 flex-col"
+        >
+          <div className="bg-card border-border border-b px-4">
             <TabsList className="bg-transparent">
               <TabsTrigger value="all">All Documents</TabsTrigger>
               <TabsTrigger value="personal">Personal</TabsTrigger>
@@ -645,99 +753,128 @@ export default function MyNotesPage() {
             </TabsList>
           </div>
 
-          <TabsContent value={filterType} className="flex-1 overflow-auto p-6 mt-0">
+          <TabsContent
+            value={filterType}
+            className="mt-0 flex-1 overflow-auto p-6"
+          >
             {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <div className="flex h-64 items-center justify-center">
+                <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
               </div>
             ) : filteredDocuments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-64 text-center">
-                <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">No documents found</h3>
+              <div className="flex h-64 flex-col items-center justify-center text-center">
+                <FileText className="text-muted-foreground mb-4 h-16 w-16" />
+                <h3 className="text-foreground mb-2 text-lg font-semibold">
+                  No documents found
+                </h3>
                 <p className="text-muted-foreground mb-4">
-                  {searchQuery ? "Try adjusting your search" : "Create your first document to get started"}
+                  {searchQuery
+                    ? "Try adjusting your search"
+                    : "Create your first document to get started"}
                 </p>
                 {!searchQuery && (
-                  <Button onClick={() => setIsNewDocOpen(true)} className="gap-2">
+                  <Button
+                    onClick={() => setIsNewDocOpen(true)}
+                    className="gap-2"
+                  >
                     <Plus className="h-4 w-4" />
                     New Document
                   </Button>
                 )}
               </div>
-            ) : viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            ) : viewMode === "grid" ? (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredDocuments.map((doc) => (
-                  <Card key={doc.id} className="hover:shadow-lg transition-shadow cursor-pointer group bg-card border-border">
+                  <Card
+                    key={doc.id}
+                    className="group bg-card border-border cursor-pointer transition-shadow hover:shadow-lg"
+                  >
                     <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-3">
+                      <div className="mb-3 flex items-start justify-between">
                         <div className="flex items-center gap-2">
                           {getFileIcon(doc.file_type || null)}
-                          <span className="font-medium text-sm truncate max-w-[150px] text-foreground">{doc.title}</span>
+                          <span className="text-foreground max-w-[150px] truncate text-sm font-medium">
+                            {doc.title}
+                          </span>
                         </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 opacity-0 group-hover:opacity-100"
+                            >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => {
-                              setDocumentToView(doc);
-                              setIsViewContentOpen(true);
-                            }}>
-                              <Eye className="h-4 w-4 mr-2" />
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setDocumentToView(doc);
+                                setIsViewContentOpen(true);
+                              }}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
                               View Content
                             </DropdownMenuItem>
                             {doc.attachment_url && (
-                              <DropdownMenuItem onClick={() => window.open(doc.attachment_url!, '_blank')}>
-                                <Download className="h-4 w-4 mr-2" />
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  window.open(doc.attachment_url!, "_blank")
+                                }
+                              >
+                                <Download className="mr-2 h-4 w-4" />
                                 Download Attachment
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem onClick={() => {
-                              setDocumentToShare(doc);
-                              setIsShareDialogOpen(true);
-                            }}>
-                              <Share2 className="h-4 w-4 mr-2" />
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setDocumentToShare(doc);
+                                setIsShareDialogOpen(true);
+                              }}
+                            >
+                              <Share2 className="mr-2 h-4 w-4" />
                               Share to Group
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => handleDeleteDocument(doc.id)}
                               className="text-red-600"
                             >
-                              <Trash2 className="h-4 w-4 mr-2" />
+                              <Trash2 className="mr-2 h-4 w-4" />
                               Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
 
-                      {doc.attachment_url && doc.file_type === 'image' && (
-                        <div className="mb-3 rounded-lg overflow-hidden bg-muted">
-                          <img 
-                            src={doc.attachment_url} 
-                            alt={doc.title} 
-                            className="w-full h-32 object-cover"
+                      {doc.attachment_url && doc.file_type === "image" && (
+                        <div className="bg-muted mb-3 overflow-hidden rounded-lg">
+                          <img
+                            src={doc.attachment_url}
+                            alt={doc.title}
+                            className="h-32 w-full object-cover"
                           />
                         </div>
                       )}
 
                       {doc.message && doc.message !== doc.title && (
-                        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                        <p className="text-muted-foreground mb-3 line-clamp-2 text-sm">
                           {doc.message}
                         </p>
                       )}
 
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <div className="text-muted-foreground flex items-center justify-between text-xs">
                         <div className="flex items-center gap-1">
                           <Avatar className="h-5 w-5">
-                            <AvatarImage src={doc.author?.avatar_url || undefined} />
+                            <AvatarImage
+                              src={doc.author?.avatar_url || undefined}
+                            />
                             <AvatarFallback className="text-xs">
-                              {doc.author?.name?.charAt(0).toUpperCase() || 'U'}
+                              {doc.author?.name?.charAt(0).toUpperCase() || "U"}
                             </AvatarFallback>
                           </Avatar>
-                          <span>{doc.author?.name || 'Unknown'}</span>
+                          <span>{doc.author?.name || "Unknown"}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
@@ -758,53 +895,74 @@ export default function MyNotesPage() {
             ) : (
               <div className="space-y-2">
                 {filteredDocuments.map((doc) => (
-                  <Card key={doc.id} className="hover:bg-accent transition-colors cursor-pointer bg-card border-border">
+                  <Card
+                    key={doc.id}
+                    className="hover:bg-accent bg-card border-border cursor-pointer transition-colors"
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-center gap-4">
                         <div className="flex-shrink-0">
                           {getFileIcon(doc.file_type || null)}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-sm truncate text-foreground">{doc.title}</h3>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
-                            <span>{doc.author?.name || 'Unknown'}</span>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-foreground truncate text-sm font-medium">
+                            {doc.title}
+                          </h3>
+                          <div className="text-muted-foreground mt-1 flex items-center gap-4 text-xs">
+                            <span>{doc.author?.name || "Unknown"}</span>
                             <span>{formatDate(doc.created_at)}</span>
-                            {doc.group && <span className="text-blue-600">{doc.group.name}</span>}
+                            {doc.group && (
+                              <span className="text-blue-600">
+                                {doc.group.name}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                            >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => {
-                              setDocumentToView(doc);
-                              setIsViewContentOpen(true);
-                            }}>
-                              <Eye className="h-4 w-4 mr-2" />
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setDocumentToView(doc);
+                                setIsViewContentOpen(true);
+                              }}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
                               View Content
                             </DropdownMenuItem>
                             {doc.attachment_url && (
-                              <DropdownMenuItem onClick={() => window.open(doc.attachment_url!, '_blank')}>
-                                <Download className="h-4 w-4 mr-2" />
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  window.open(doc.attachment_url!, "_blank")
+                                }
+                              >
+                                <Download className="mr-2 h-4 w-4" />
                                 Download Attachment
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem onClick={() => {
-                              setDocumentToShare(doc);
-                              setIsShareDialogOpen(true);
-                            }}>
-                              <Share2 className="h-4 w-4 mr-2" />
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setDocumentToShare(doc);
+                                setIsShareDialogOpen(true);
+                              }}
+                            >
+                              <Share2 className="mr-2 h-4 w-4" />
                               Share to Group
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => handleDeleteDocument(doc.id)}
                               className="text-red-600"
                             >
-                              <Trash2 className="h-4 w-4 mr-2" />
+                              <Trash2 className="mr-2 h-4 w-4" />
                               Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -835,7 +993,9 @@ export default function MyNotesPage() {
                 id="title"
                 placeholder="Document title..."
                 value={newDoc.title}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewDoc({ ...newDoc, title: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setNewDoc({ ...newDoc, title: e.target.value })
+                }
               />
             </div>
             <div className="space-y-2">
@@ -844,7 +1004,9 @@ export default function MyNotesPage() {
                 id="message"
                 placeholder="Add a description..."
                 value={newDoc.message}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewDoc({ ...newDoc, message: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  setNewDoc({ ...newDoc, message: e.target.value })
+                }
                 rows={3}
               />
             </div>
@@ -863,12 +1025,16 @@ export default function MyNotesPage() {
                 className="w-full"
                 onClick={() => fileInputRef.current?.click()}
               >
-                <Upload className="h-4 w-4 mr-2" />
+                <Upload className="mr-2 h-4 w-4" />
                 {selectedFile ? selectedFile.name : "Choose file"}
               </Button>
               {filePreview && (
                 <div className="relative mt-2">
-                  <img src={filePreview} alt="Preview" className="w-full h-32 object-cover rounded-lg" />
+                  <img
+                    src={filePreview}
+                    alt="Preview"
+                    className="h-32 w-full rounded-lg object-cover"
+                  />
                   <Button
                     type="button"
                     variant="destructive"
@@ -903,34 +1069,41 @@ export default function MyNotesPage() {
           <DialogHeader>
             <DialogTitle>Share Note to Group</DialogTitle>
             <DialogDescription>
-              Select a group to share this note with. The note will be copied to the group's shared notes board.
+              Select a group to share this note with. The note will be copied to
+              the group's shared notes board.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             {documentToShare && (
-              <div className="rounded-lg bg-muted p-3 mb-4">
-                <p className="text-sm font-medium text-foreground mb-1">
+              <div className="bg-muted mb-4 rounded-lg p-3">
+                <p className="text-foreground mb-1 text-sm font-medium">
                   {documentToShare.title}
                 </p>
-                {documentToShare.message && documentToShare.message !== documentToShare.title && (
-                  <p className="text-xs text-gray-600 line-clamp-2">
-                    {documentToShare.message}
-                  </p>
-                )}
+                {documentToShare.message &&
+                  documentToShare.message !== documentToShare.title && (
+                    <p className="line-clamp-2 text-xs text-gray-600">
+                      {documentToShare.message}
+                    </p>
+                  )}
               </div>
             )}
             <div className="space-y-2">
               <Label htmlFor="group">Select Group</Label>
               {userGroups.length === 0 ? (
                 <p className="text-sm text-gray-500">
-                  You are not a member of any groups yet. Join a group to share notes.
+                  You are not a member of any groups yet. Join a group to share
+                  notes.
                 </p>
               ) : (
                 <select
                   id="group"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   value={selectedGroupId || ""}
-                  onChange={(e) => setSelectedGroupId(e.target.value ? parseInt(e.target.value) : null)}
+                  onChange={(e) =>
+                    setSelectedGroupId(
+                      e.target.value ? parseInt(e.target.value) : null,
+                    )
+                  }
                 >
                   <option value="">Choose a group...</option>
                   {userGroups.map((group) => (
@@ -943,15 +1116,18 @@ export default function MyNotesPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setIsShareDialogOpen(false);
-              setDocumentToShare(null);
-              setSelectedGroupId(null);
-            }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsShareDialogOpen(false);
+                setDocumentToShare(null);
+                setSelectedGroupId(null);
+              }}
+            >
               Cancel
             </Button>
-            <Button 
-              onClick={handleShareDocument} 
+            <Button
+              onClick={handleShareDocument}
               disabled={sharing || !selectedGroupId || userGroups.length === 0}
             >
               {sharing ? "Sharing..." : "Share to Group"}
@@ -964,17 +1140,20 @@ export default function MyNotesPage() {
       <Dialog open={isViewContentOpen} onOpenChange={setIsViewContentOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>{documentToView?.title || 'Document'}</DialogTitle>
+            <DialogTitle>{documentToView?.title || "Document"}</DialogTitle>
             <DialogDescription>
-              {documentToView?.author?.name && `Created by ${documentToView.author.name}`}
-              {documentToView?.group?.name && ` • Shared in ${documentToView.group.name}`}
-              {documentToView?.created_at && ` • ${new Date(documentToView.created_at).toLocaleString()}`}
+              {documentToView?.author?.name &&
+                `Created by ${documentToView.author.name}`}
+              {documentToView?.group?.name &&
+                ` • Shared in ${documentToView.group.name}`}
+              {documentToView?.created_at &&
+                ` • ${new Date(documentToView.created_at).toLocaleString()}`}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             {documentToView?.message && (
-              <div className="rounded-lg bg-muted p-4">
-                <p className="text-sm whitespace-pre-wrap break-words text-foreground">
+              <div className="bg-muted rounded-lg p-4">
+                <p className="text-foreground text-sm break-words whitespace-pre-wrap">
                   {documentToView.message}
                 </p>
               </div>
@@ -982,32 +1161,37 @@ export default function MyNotesPage() {
             {documentToView?.attachment_url && (
               <div className="space-y-2">
                 <Label>Attachment</Label>
-                {documentToView.file_type === 'image' ? (
-                  <img 
-                    src={documentToView.attachment_url} 
+                {documentToView.file_type === "image" ? (
+                  <img
+                    src={documentToView.attachment_url}
                     alt={documentToView.title}
                     className="w-full rounded-lg border"
                   />
                 ) : (
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="w-full"
-                    onClick={() => window.open(documentToView.attachment_url!, '_blank')}
+                    onClick={() =>
+                      window.open(documentToView.attachment_url!, "_blank")
+                    }
                   >
-                    <Download className="h-4 w-4 mr-2" />
-                    Download {documentToView.file_type?.toUpperCase() || 'File'}
+                    <Download className="mr-2 h-4 w-4" />
+                    Download {documentToView.file_type?.toUpperCase() || "File"}
                   </Button>
                 )}
               </div>
             )}
             {!documentToView?.message && !documentToView?.attachment_url && (
-              <p className="text-sm text-gray-500 text-center py-4">
+              <p className="py-4 text-center text-sm text-gray-500">
                 No content available
               </p>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsViewContentOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsViewContentOpen(false)}
+            >
               Close
             </Button>
           </DialogFooter>

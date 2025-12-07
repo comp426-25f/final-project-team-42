@@ -68,10 +68,10 @@ export function MessageBoard({ groupId }: MessageBoardProps) {
             fetchMessages();
           } else if (payload.eventType === "DELETE") {
             setMessages((prev) =>
-              prev.filter((msg) => msg.id !== payload.old.id)
+              prev.filter((msg) => msg.id !== payload.old.id),
             );
           }
-        }
+        },
       )
       .subscribe();
 
@@ -179,10 +179,10 @@ export function MessageBoard({ groupId }: MessageBoardProps) {
               </Avatar>
               <div className="flex-1">
                 <div className="flex items-baseline gap-2">
-                  <span className="font-semibold text-sm">
+                  <span className="text-sm font-semibold">
                     {msg.author.name}
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-muted-foreground text-xs">
                     {new Date(msg.created_at).toLocaleString()}
                   </span>
                 </div>
@@ -204,7 +204,7 @@ export function MessageBoard({ groupId }: MessageBoardProps) {
                         href={msg.attachment_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 rounded-lg border p-3 hover:bg-accent"
+                        className="hover:bg-accent flex items-center gap-2 rounded-lg border p-3"
                       >
                         <File className="h-5 w-5" />
                         <span className="text-sm">View PDF</span>
@@ -214,7 +214,7 @@ export function MessageBoard({ groupId }: MessageBoardProps) {
                         href={msg.attachment_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 rounded-lg border p-3 hover:bg-accent"
+                        className="hover:bg-accent flex items-center gap-2 rounded-lg border p-3"
                       >
                         <File className="h-5 w-5" />
                         <span className="text-sm">Download File</span>
@@ -230,7 +230,7 @@ export function MessageBoard({ groupId }: MessageBoardProps) {
 
       <div className="border-t p-4">
         {selectedFile && (
-          <div className="mb-2 flex items-center gap-2 rounded-lg border bg-muted p-2">
+          <div className="bg-muted mb-2 flex items-center gap-2 rounded-lg border p-2">
             {selectedFile.type.startsWith("image/") ? (
               <ImageIcon className="h-4 w-4" />
             ) : (

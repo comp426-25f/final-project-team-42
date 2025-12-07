@@ -93,7 +93,7 @@ async function generateSummary(openai: OpenAI, text: string): Promise<string> {
 async function generateQuiz(
   openai: OpenAI,
   text: string,
-  numQuestions: number = 5
+  numQuestions: number = 5,
 ): Promise<QuizQuestion[]> {
   const response = await openai.chat.completions.create({
     model: "gpt-3.5-turbo",
@@ -131,7 +131,7 @@ async function generateQuiz(
 async function generateFlashcards(
   openai: OpenAI,
   text: string,
-  numFlashcards: number = 10
+  numFlashcards: number = 10,
 ): Promise<Flashcard[]> {
   const response = await openai.chat.completions.create({
     model: "gpt-3.5-turbo",
@@ -164,11 +164,14 @@ async function generateFlashcards(
 /**
  * Generate a summary using Gemini
  */
-async function generateSummaryGemini(genAI: GoogleGenerativeAI, text: string): Promise<string> {
+async function generateSummaryGemini(
+  genAI: GoogleGenerativeAI,
+  text: string,
+): Promise<string> {
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-  
+
   const prompt = `You are a helpful study assistant. Create a clear, concise summary of the following study materials that captures the key concepts and important details:\n\n${text}`;
-  
+
   const result = await model.generateContent(prompt);
   const response = await result.response;
   return response.text() || "Unable to generate summary";
@@ -180,19 +183,22 @@ async function generateSummaryGemini(genAI: GoogleGenerativeAI, text: string): P
 async function generateQuizGemini(
   genAI: GoogleGenerativeAI,
   text: string,
-  numQuestions: number = 5
+  numQuestions: number = 5,
 ): Promise<QuizQuestion[]> {
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-  
+
   const prompt = `You are a helpful study assistant. Create ${numQuestions} multiple-choice questions from the following text. Return ONLY valid JSON with no additional text or formatting. Use this exact format: [{"question": "...", "options": ["A", "B", "C", "D"], "correctAnswer": 0, "explanation": "..."}]\n\nText:\n${text}`;
-  
+
   const result = await model.generateContent(prompt);
   const response = await result.response;
   const content = response.text();
-  
+
   try {
     // Clean up the response (remove markdown code blocks if present)
-    const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const cleanContent = content
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
     const questions = JSON.parse(cleanContent);
     return Array.isArray(questions) ? questions : [];
   } catch (error) {
@@ -207,19 +213,22 @@ async function generateQuizGemini(
 async function generateFlashcardsGemini(
   genAI: GoogleGenerativeAI,
   text: string,
-  numFlashcards: number = 10
+  numFlashcards: number = 10,
 ): Promise<Flashcard[]> {
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-  
+
   const prompt = `You are a helpful study assistant. Create ${numFlashcards} flashcards from the following text with concise questions/prompts on the front and clear answers on the back. Return ONLY valid JSON with no additional text or formatting. Use this exact format: [{"front": "question or prompt", "back": "answer or explanation"}]\n\nText:\n${text}`;
-  
+
   const result = await model.generateContent(prompt);
   const response = await result.response;
   const content = response.text();
-  
+
   try {
     // Clean up the response (remove markdown code blocks if present)
-    const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const cleanContent = content
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
     const flashcards = JSON.parse(cleanContent);
     return Array.isArray(flashcards) ? flashcards : [];
   } catch (error) {
@@ -233,7 +242,7 @@ async function generateFlashcardsGemini(
  */
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<AIResponse>
+  res: NextApiResponse<AIResponse>,
 ) {
   // Only allow POST requests
   if (req.method !== "POST") {
@@ -275,7 +284,8 @@ export default async function handler(
     if (!["summary", "quiz", "flashcards"].includes(type)) {
       return res.status(400).json({
         success: false,
-        error: "Invalid request type. Must be 'summary', 'quiz', or 'flashcards'",
+        error:
+          "Invalid request type. Must be 'summary', 'quiz', or 'flashcards'",
       });
     }
 
@@ -332,7 +342,11 @@ export default async function handler(
 
         case "flashcards":
           const numFlashcards = options?.numFlashcards || 10;
-          const flashcards = await generateFlashcards(openai, text, numFlashcards);
+          const flashcards = await generateFlashcards(
+            openai,
+            text,
+            numFlashcards,
+          );
           result = { flashcards };
           break;
       }
@@ -354,7 +368,11 @@ export default async function handler(
 
         case "flashcards":
           const numFlashcards = options?.numFlashcards || 10;
-          const flashcards = await generateFlashcardsGemini(genAI, text, numFlashcards);
+          const flashcards = await generateFlashcardsGemini(
+            genAI,
+            text,
+            numFlashcards,
+          );
           result = { flashcards };
           break;
       }
@@ -386,8 +404,8 @@ export default async function handler(
     // Generic error response
     return res.status(500).json({
       success: false,
-      error: error?.message || "An error occurred while processing your request",
+      error:
+        error?.message || "An error occurred while processing your request",
     });
   }
 }
-

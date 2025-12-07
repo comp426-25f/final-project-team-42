@@ -73,7 +73,6 @@ export default function GroupsPage({
   const [groups, setGroups] = useState<Group[]>([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [course, setCourse] = useState("");
@@ -88,7 +87,6 @@ export default function GroupsPage({
   const [isJoinGroupOpen, setIsJoinGroupOpen] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [isJoining, setIsJoining] = useState(false);
-
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -105,7 +103,7 @@ export default function GroupsPage({
     setSelectedGroupId(group.id);
   };
 
-    const fetchUser = async () => {
+  const fetchUser = async () => {
     try {
       const {
         data: { user },
@@ -131,9 +129,7 @@ export default function GroupsPage({
 
         if (!dbError && dbUser) {
           const fallbackName =
-            user.user_metadata?.name ||
-            user.email?.split("@")[0] ||
-            "User";
+            user.user_metadata?.name || user.email?.split("@")[0] || "User";
 
           setUserName(dbUser.name || fallbackName);
 
@@ -153,9 +149,7 @@ export default function GroupsPage({
           }
         } else {
           const name =
-            user.user_metadata?.name ||
-            user.email?.split("@")[0] ||
-            "User";
+            user.user_metadata?.name || user.email?.split("@")[0] || "User";
           setUserName(name);
           setUserAvatarUrl(null);
         }
@@ -194,7 +188,6 @@ export default function GroupsPage({
     };
   }, [router, supabase]);
 
-
   const fetchGroups = async () => {
     try {
       const { data, error } = await supabase
@@ -232,7 +225,6 @@ export default function GroupsPage({
       supabase.removeChannel(channel);
     };
   });
-
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
@@ -295,7 +287,7 @@ export default function GroupsPage({
       setDescription("");
       setGroupImage(null);
       setIsCreateGroupOpen(false);
-    } finally{
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -361,143 +353,153 @@ export default function GroupsPage({
     }
   };
 
-
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="bg-background flex min-h-screen">
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-screen flex flex-col transition-all duration-300 z-50">
-              <Collapsible
-                open={!isSidebarCollapsed}
-                onOpenChange={(open: boolean) => setIsSidebarCollapsed(!open)}
-                className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} h-full bg-card border-r border-border flex flex-col`}
+      <aside className="fixed top-0 left-0 z-50 flex h-screen flex-col transition-all duration-300">
+        <Collapsible
+          open={!isSidebarCollapsed}
+          onOpenChange={(open: boolean) => setIsSidebarCollapsed(!open)}
+          className={`${isSidebarCollapsed ? "w-16" : "w-64"} bg-card border-border flex h-full flex-col border-r`}
+        >
+          {/* Collapse Trigger */}
+          <div className="absolute top-6 right-4 z-10">
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="bg-card border-border h-8 w-8 border p-0"
+                title={
+                  isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+                }
               >
-                {/* Collapse Trigger */}
-                <div className="absolute right-4 top-6 z-10">
-                  <CollapsibleTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 p-0 bg-card border border-border"
-                      title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                    >
-                      {isSidebarCollapsed ? (
-                        <ChevronRight className="h-4 w-4" />
-                      ) : (
-                        <PanelLeft className="h-4 w-4" />
-                      )}
-                      <span className="sr-only">Toggle sidebar</span>
-                    </Button>
-                  </CollapsibleTrigger>
+                {isSidebarCollapsed ? (
+                  <ChevronRight className="h-4 w-4" />
+                ) : (
+                  <PanelLeft className="h-4 w-4" />
+                )}
+                <span className="sr-only">Toggle sidebar</span>
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+
+          <CollapsibleContent className="flex h-full flex-1 flex-col">
+            <div>
+              {/* Logo */}
+              <div className="border-border border-b p-6">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-[#4B9CD3]">
+                    <Book className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="text-foreground text-xl font-bold whitespace-nowrap">
+                    StudyBuddy
+                  </span>
                 </div>
-      
-                <CollapsibleContent className="flex-1 flex flex-col h-full">
-                  <div>
-                    {/* Logo */}
-                    <div className="p-6 border-b border-border">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-[#4B9CD3] rounded flex items-center justify-center flex-shrink-0">
-                          <Book className="h-5 w-5 text-white" />
-                        </div>
-                        <span className="text-xl font-bold text-foreground whitespace-nowrap">StudyBuddy</span>
-                      </div>
-                    </div>
-      
-                    {/* Menu */}
-                    <nav className="p-4 space-y-6">
-                      <div>
-                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                          Menu
-                        </h3>
-                        <ul className="space-y-1">
-                          <li>
-                            <button
-                              onClick={() => router.push("/dashboard")}
-                              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:bg-accent transition-colors "
-                              title="Dashboard"
-                            >
-                              <Home className="h-5 w-5 flex-shrink-0" />
-                              <span>Dashboard</span>
-                            </button>
-                          </li>
-                          <li>
-                            <button
-                              onClick={() => router.push("/study-groups")}
-                              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-accent text-foreground font-medium"
-                              title="Group Chats"
-                            >
-                              <Users className="h-5 w-5 flex-shrink-0" />
-                              <span>Group Chats</span>
-                            </button>
-                          </li>
-                         
-                          <li>
-                            <button
-                              onClick={() => router.push("/my-notes")}
-                              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:bg-accent transition-colors"
-                              title="My Notes"
-                            >
-                              <FileText className="h-5 w-5 flex-shrink-0" />
-                              <span>My Notes</span>
-                            </button>
-                          </li>
-                        </ul>
-                      </div>
-      
-                      {/* Account */}
-                      <div>
-                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                          Account
-                        </h3>
-                        <ul className="space-y-1">
-                          <li>
-                            <button
-                              onClick={() => router.push("/settings")}
-                              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:bg-accent transition-colors"
-                              title="Settings"
-                            >
-                              <Settings className="h-5 w-5 flex-shrink-0" />
-                              <span>Settings</span>
-                            </button>
-                          </li>
-                        </ul>
-                      </div>
-                    </nav>
-                  </div>
-      
-                  <div className="mt-auto p-4 border-t border-border">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-10 h-10 flex-shrink-0">
-                        <AvatarImage 
-                          src={userAvatarUrl || undefined} 
-                          className="object-cover"
-                        />
-                        <AvatarFallback className="bg-muted">
-                          <span className="text-sm font-semibold text-muted-foreground">
-                            {userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-                          </span>
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {userName}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {userEmail}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            </aside>
+              </div>
+
+              {/* Menu */}
+              <nav className="space-y-6 p-4">
+                <div>
+                  <h3 className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">
+                    Menu
+                  </h3>
+                  <ul className="space-y-1">
+                    <li>
+                      <button
+                        onClick={() => router.push("/dashboard")}
+                        className="text-foreground hover:bg-accent flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors"
+                        title="Dashboard"
+                      >
+                        <Home className="h-5 w-5 flex-shrink-0" />
+                        <span>Dashboard</span>
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => router.push("/study-groups")}
+                        className="bg-accent text-foreground flex w-full items-center gap-3 rounded-lg px-3 py-2 font-medium"
+                        title="Group Chats"
+                      >
+                        <Users className="h-5 w-5 flex-shrink-0" />
+                        <span>Group Chats</span>
+                      </button>
+                    </li>
+
+                    <li>
+                      <button
+                        onClick={() => router.push("/my-notes")}
+                        className="text-foreground hover:bg-accent flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors"
+                        title="My Notes"
+                      >
+                        <FileText className="h-5 w-5 flex-shrink-0" />
+                        <span>My Notes</span>
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Account */}
+                <div>
+                  <h3 className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">
+                    Account
+                  </h3>
+                  <ul className="space-y-1">
+                    <li>
+                      <button
+                        onClick={() => router.push("/settings")}
+                        className="text-foreground hover:bg-accent flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors"
+                        title="Settings"
+                      >
+                        <Settings className="h-5 w-5 flex-shrink-0" />
+                        <span>Settings</span>
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              </nav>
+            </div>
+
+            <div className="border-border mt-auto border-t p-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10 flex-shrink-0">
+                  <AvatarImage
+                    src={userAvatarUrl || undefined}
+                    className="object-cover"
+                  />
+                  <AvatarFallback className="bg-muted">
+                    <span className="text-muted-foreground text-sm font-semibold">
+                      {userName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2)}
+                    </span>
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="text-foreground truncate text-sm font-medium">
+                    {userName}
+                  </p>
+                  <p className="text-muted-foreground truncate text-xs">
+                    {userEmail}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </aside>
 
       {/* Main content */}
-      <div className="flex-1 ml-16 md:ml-64">
-        <header className="border-b border-border bg-card">
-          <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div className="ml-16 flex-1 md:ml-64">
+        <header className="border-border bg-card border-b">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Group Chats</h1>
-              <p className="text-sm text-muted-foreground">
+              <h1 className="text-foreground text-2xl font-bold">
+                Group Chats
+              </h1>
+              <p className="text-muted-foreground text-sm">
                 Real-time discussions with your study groups.
               </p>
             </div>
@@ -508,8 +510,7 @@ export default function GroupsPage({
                   value={selectedGroupId ? String(selectedGroupId) : undefined}
                   onValueChange={(value) => {
                     const id = Number(value);
-                    const group =
-                      userGroups.find((g) => g.id === id);
+                    const group = userGroups.find((g) => g.id === id);
                     if (group) handleSelectGroup(group);
                   }}
                 >
@@ -528,9 +529,9 @@ export default function GroupsPage({
 
               <Button
                 onClick={() => setIsCreateGroupOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-blue-600 text-white hover:bg-blue-700"
               >
-                <PlusCircle className="h-4 w-4 mr-2" />
+                <PlusCircle className="mr-2 h-4 w-4" />
                 Create Group
               </Button>
               <Button
@@ -543,7 +544,7 @@ export default function GroupsPage({
           </div>
         </header>
 
-        <main className="max-w-6xl mx-auto px-6 py-6 space-y-6">
+        <main className="mx-auto max-w-6xl space-y-6 px-6 py-6">
           {/* Active group chat */}
           <section>
             {selectedGroup ? (
@@ -553,13 +554,12 @@ export default function GroupsPage({
                 authorId={authorId}
               />
             ) : (
-              <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-border bg-muted text-sm text-muted-foreground">
+              <div className="border-border bg-muted text-muted-foreground flex h-40 items-center justify-center rounded-lg border border-dashed text-sm">
                 Select a group from the dropdown above, or join/create one to
                 start chatting.
               </div>
             )}
           </section>
-
         </main>
       </div>
 
@@ -635,7 +635,7 @@ export default function GroupsPage({
             </Button>
             <Button
               onClick={handleCreateGroup}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-blue-600 text-white hover:bg-blue-700"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Creating..." : "Create Group"}
@@ -680,7 +680,7 @@ export default function GroupsPage({
             </Button>
             <Button
               onClick={handleJoinGroup}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-blue-600 text-white hover:bg-blue-700"
               disabled={!joinCode || isJoining}
             >
               {isJoining ? "Joining..." : "Join Group"}

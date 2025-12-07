@@ -21,9 +21,8 @@ export async function extractTextFromPDF(file: File): Promise<string> {
     const pdfjsLib = (pdfjsLibModule as any).default || pdfjsLibModule;
 
     // @ts-ignore -- worker bundle resolves to a string URL at runtime.
-    const workerSrcModule = await import(
-      "pdfjs-dist/legacy/build/pdf.worker.min.js?url"
-    );
+    const workerSrcModule =
+      await import("pdfjs-dist/legacy/build/pdf.worker.min.js?url");
     pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrcModule.default;
 
     // Convert file to ArrayBuffer
@@ -40,9 +39,7 @@ export async function extractTextFromPDF(file: File): Promise<string> {
       const textContent = await page.getTextContent();
 
       // Combine all text items from the page
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(" ");
+      const pageText = textContent.items.map((item: any) => item.str).join(" ");
 
       fullText += pageText + "\n\n";
     }
@@ -62,7 +59,7 @@ export async function extractTextFromPDF(file: File): Promise<string> {
  */
 export function validateFile(
   file: File,
-  maxSizeMB: number = 10
+  maxSizeMB: number = 10,
 ): { valid: boolean; error?: string } {
   // Check file type
   if (file.type !== "application/pdf") {
@@ -92,7 +89,7 @@ export function validateFile(
  */
 export function validateTextLength(
   text: string,
-  maxLength: number = 15000
+  maxLength: number = 15000,
 ): { valid: boolean; error?: string } {
   // Check if text is empty
   if (!text || text.trim().length === 0) {

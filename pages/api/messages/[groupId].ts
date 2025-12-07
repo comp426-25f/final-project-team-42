@@ -3,7 +3,7 @@ import createApiClient from "@/utils/supabase/clients/api";
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ) {
   const supabase = createApiClient(req, res);
   const { groupId } = req.query;
@@ -24,7 +24,7 @@ export default async function handler(
         `
         *,
         author:users!author_id(id, name, avatar_url)
-      `
+      `,
       )
       .eq("group_id", groupId)
       .order("created_at", { ascending: true });
@@ -38,9 +38,7 @@ export default async function handler(
     const { message, attachment_url } = req.body;
 
     if (!message && !attachment_url) {
-      return res
-        .status(400)
-        .json({ error: "Message or attachment required" });
+      return res.status(400).json({ error: "Message or attachment required" });
     }
 
     const { data, error } = await supabase
@@ -55,7 +53,7 @@ export default async function handler(
         `
         *,
         author:users!author_id(id, name, avatar_url)
-      `
+      `,
       )
       .single();
 

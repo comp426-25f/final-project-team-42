@@ -8,8 +8,10 @@ export default function HomePage() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (user) {
         router.push("/dashboard");
       } else {
@@ -23,8 +25,8 @@ export default function HomePage() {
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-        <p className="mt-4 text-muted-foreground">Loading...</p>
+        <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-gray-900"></div>
+        <p className="text-muted-foreground mt-4">Loading...</p>
       </div>
     </div>
   );

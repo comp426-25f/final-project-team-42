@@ -35,7 +35,9 @@ export const groupsTable = pgTable("groups", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  owner_id: integer("owner_id").notNull().references(() => usersTable.id),
+  owner_id: integer("owner_id")
+    .notNull()
+    .references(() => usersTable.id),
   is_private: boolean("is_private").default(false).notNull(),
   created_at: timestamp("created_at").defaultNow().notNull(),
 });
@@ -43,8 +45,12 @@ export const groupsTable = pgTable("groups", {
 /** Memberships table (many-to-many relationship between users and groups) */
 export const membershipsTable = pgTable("memberships", {
   id: serial("id").primaryKey(),
-  user_id: integer("user_id").notNull().references(() => usersTable.id),
-  group_id: integer("group_id").notNull().references(() => groupsTable.id),
+  user_id: integer("user_id")
+    .notNull()
+    .references(() => usersTable.id),
+  group_id: integer("group_id")
+    .notNull()
+    .references(() => groupsTable.id),
   role: text("role").default("member").notNull(),
   joined_at: timestamp("joined_at").defaultNow().notNull(),
 });
@@ -53,7 +59,9 @@ export const membershipsTable = pgTable("memberships", {
 export const messagesTable = pgTable("messages", {
   id: serial("id").primaryKey(),
   group_id: integer("group_id").references(() => groupsTable.id), // Nullable for personal notes
-  author_id: integer("author_id").notNull().references(() => usersTable.id),
+  author_id: integer("author_id")
+    .notNull()
+    .references(() => usersTable.id),
   message: text("message"),
   attachment_url: text("attachment_url"),
   created_at: timestamp("created_at").defaultNow().notNull(),

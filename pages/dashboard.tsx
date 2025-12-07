@@ -1,9 +1,33 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/router";
 import { createSupabaseComponentClient } from "@/utils/supabase/clients/component";
-import { Book, Home, Users, Sparkles, MessageSquare, FileText, Settings, Search, Plus, Flame, TrendingUp, PanelLeft, ChevronRight, Copy, Check, Share2, Clock, Trash2, LogOut } from "lucide-react";
+import {
+  Book,
+  Home,
+  Users,
+  Sparkles,
+  MessageSquare,
+  FileText,
+  Settings,
+  Search,
+  Plus,
+  Flame,
+  TrendingUp,
+  PanelLeft,
+  ChevronRight,
+  Copy,
+  Check,
+  Share2,
+  Clock,
+  Trash2,
+  LogOut,
+} from "lucide-react";
 import { ModeToggle } from "@/components/theme/mode-toggle";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,44 +35,51 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const formatTimeAgo = (date: Date): string => {
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  
+
   const intervals = {
     year: 31536000,
     month: 2592000,
     week: 604800,
     day: 86400,
     hour: 3600,
-    minute: 60
+    minute: 60,
   };
 
-  if (diffInSeconds < 60) return 'Just now';
+  if (diffInSeconds < 60) return "Just now";
   if (diffInSeconds < 3600) {
     const mins = Math.floor(diffInSeconds / 60);
-    return `${mins} ${mins === 1 ? 'min' : 'mins'} ago`;
+    return `${mins} ${mins === 1 ? "min" : "mins"} ago`;
   }
   if (diffInSeconds < 86400) {
     const hours = Math.floor(diffInSeconds / 3600);
-    return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+    return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
   }
   if (diffInSeconds < 604800) {
     const days = Math.floor(diffInSeconds / 86400);
-    return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+    return `${days} ${days === 1 ? "day" : "days"} ago`;
   }
   if (diffInSeconds < 2592000) {
     const weeks = Math.floor(diffInSeconds / 604800);
-    return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+    return `${weeks} ${weeks === 1 ? "week" : "weeks"} ago`;
   }
   if (diffInSeconds < 31536000) {
     const months = Math.floor(diffInSeconds / 2592000);
-    return `${months} ${months === 1 ? 'month' : 'months'} ago`;
+    return `${months} ${months === 1 ? "month" : "months"} ago`;
   }
   const years = Math.floor(diffInSeconds / 31536000);
-  return `${years} ${years === 1 ? 'year' : 'years'} ago`;
+  return `${years} ${years === 1 ? "year" : "years"} ago`;
 };
 
 interface StudyGroup {
@@ -73,7 +104,7 @@ interface RecentActivity {
   message: string | null;
   attachmentUrl: string | null;
   createdAt: Date;
-  activityType: 'message' | 'attachment';
+  activityType: "message" | "attachment";
 }
 
 const initialStudyGroups: StudyGroup[] = [];
@@ -82,9 +113,12 @@ export default function DashboardPage() {
   const router = useRouter();
   const supabase = createSupabaseComponentClient();
   const [searchQuery, setSearchQuery] = useState("");
-  const [studyGroups, setStudyGroups] = useState<StudyGroup[]>(initialStudyGroups);
+  const [studyGroups, setStudyGroups] =
+    useState<StudyGroup[]>(initialStudyGroups);
   const [discoverGroups, setDiscoverGroups] = useState<StudyGroup[]>([]);
-  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
   const [discoverLoading, setDiscoverLoading] = useState(false);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
@@ -99,8 +133,8 @@ export default function DashboardPage() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 60000); 
-    
+    }, 60000);
+
     return () => clearInterval(timer);
   }, []);
 
@@ -119,7 +153,7 @@ export default function DashboardPage() {
     };
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === "visible") {
         fetchUser();
       }
     };
@@ -128,20 +162,22 @@ export default function DashboardPage() {
       fetchUser();
     };
 
-    router.events.on('routeChangeComplete', handleRouteChange);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
+    router.events.on("routeChangeComplete", handleRouteChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
 
     return () => {
-      router.events.off('routeChangeComplete', handleRouteChange);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
+      router.events.off("routeChangeComplete", handleRouteChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [router]);
 
   const fetchUser = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
         setCurrentUserId(userId);
@@ -155,12 +191,19 @@ export default function DashboardPage() {
             .single();
 
           if (!dbError && dbUser) {
-            setUserName(dbUser.name || user.user_metadata?.name || user.email?.split('@')[0] || "User");
+            setUserName(
+              dbUser.name ||
+                user.user_metadata?.name ||
+                user.email?.split("@")[0] ||
+                "User",
+            );
             if (dbUser.avatar_url) {
-              if (dbUser.avatar_url.startsWith('http')) {
+              if (dbUser.avatar_url.startsWith("http")) {
                 setUserAvatarUrl(dbUser.avatar_url);
               } else {
-                const { data: { publicUrl } } = supabase.storage
+                const {
+                  data: { publicUrl },
+                } = supabase.storage
                   .from("group-files")
                   .getPublicUrl(dbUser.avatar_url);
                 setUserAvatarUrl(publicUrl);
@@ -169,7 +212,8 @@ export default function DashboardPage() {
               setUserAvatarUrl(null);
             }
           } else {
-            const name = user.user_metadata?.name || user.email?.split('@')[0] || "User";
+            const name =
+              user.user_metadata?.name || user.email?.split("@")[0] || "User";
             setUserName(name);
             setUserAvatarUrl(null);
           }
@@ -182,12 +226,15 @@ export default function DashboardPage() {
 
   const fetchGroups = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
 
       const { data, error } = await supabase
         .from("memberships")
-        .select(`
+        .select(
+          `
           group_id,
           groups (
             id,
@@ -197,11 +244,12 @@ export default function DashboardPage() {
             is_private,
             created_at
           )
-        `)
+        `,
+        )
         .eq("user_id", userId);
-      
+
       if (error) throw error;
-      
+
       const groupsWithCounts = await Promise.all(
         (data || []).map(async (membership: any) => {
           const group = membership.groups;
@@ -241,13 +289,18 @@ export default function DashboardPage() {
             imageUrl: null,
             owner_id: group.owner_id,
           };
-        })
+        }),
       );
 
-      const formattedGroups: StudyGroup[] = groupsWithCounts.filter((g) => g !== null) as StudyGroup[];
+      const formattedGroups: StudyGroup[] = groupsWithCounts.filter(
+        (g) => g !== null,
+      ) as StudyGroup[];
       setStudyGroups(formattedGroups);
-      
-      const total = formattedGroups.reduce((sum, group) => sum + group.resources, 0);
+
+      const total = formattedGroups.reduce(
+        (sum, group) => sum + group.resources,
+        0,
+      );
       setTotalResources(total);
     } catch (error) {
       console.error("Error fetching groups:", error);
@@ -259,7 +312,9 @@ export default function DashboardPage() {
   const fetchDiscoverGroups = async () => {
     try {
       setDiscoverLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
 
       const { data: userMemberships } = await supabase
@@ -267,7 +322,9 @@ export default function DashboardPage() {
         .select("group_id")
         .eq("user_id", userId);
 
-      const userGroupIds = new Set((userMemberships || []).map((m: any) => m.group_id));
+      const userGroupIds = new Set(
+        (userMemberships || []).map((m: any) => m.group_id),
+      );
 
       const { data: allGroups, error } = await supabase
         .from("groups")
@@ -278,7 +335,9 @@ export default function DashboardPage() {
 
       if (error) throw error;
 
-      const discoverableGroups = (allGroups || []).filter((group: any) => !userGroupIds.has(group.id)).slice(0, 20);
+      const discoverableGroups = (allGroups || [])
+        .filter((group: any) => !userGroupIds.has(group.id))
+        .slice(0, 20);
 
       const groupsWithCounts = await Promise.all(
         discoverableGroups.map(async (group: any) => {
@@ -316,7 +375,7 @@ export default function DashboardPage() {
             imageUrl: null,
             owner_id: group.owner_id,
           };
-        })
+        }),
       );
 
       setDiscoverGroups(groupsWithCounts);
@@ -330,7 +389,9 @@ export default function DashboardPage() {
   const fetchRecentActivities = async () => {
     try {
       setActivitiesLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
 
       const { data: userMemberships } = await supabase
@@ -347,7 +408,8 @@ export default function DashboardPage() {
 
       const { data: messages, error } = await supabase
         .from("messages")
-        .select(`
+        .select(
+          `
           id,
           group_id,
           author_id,
@@ -362,7 +424,8 @@ export default function DashboardPage() {
             id,
             name
           )
-        `)
+        `,
+        )
         .in("group_id", userGroupIds)
         .order("created_at", { ascending: false })
         .limit(50);
@@ -373,14 +436,14 @@ export default function DashboardPage() {
         const group = Array.isArray(msg.groups) ? msg.groups[0] : msg.groups;
         const author = Array.isArray(msg.author) ? msg.author[0] : msg.author;
         const groupId = group?.id || msg.group_id;
-        const activityType = msg.attachment_url ? 'attachment' : 'message';
+        const activityType = msg.attachment_url ? "attachment" : "message";
 
         return {
           id: msg.id,
           groupId: groupId,
-          groupName: group?.name || 'Unknown Group',
+          groupName: group?.name || "Unknown Group",
           groupColor: groupColors[groupId % groupColors.length],
-          authorName: author?.name || 'Anonymous',
+          authorName: author?.name || "Anonymous",
           authorId: author?.id || msg.author_id,
           message: msg.message,
           attachmentUrl: msg.attachment_url,
@@ -399,7 +462,9 @@ export default function DashboardPage() {
 
   const fetchTotalResources = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
 
       // Get all groups that the user is a member of
@@ -430,7 +495,9 @@ export default function DashboardPage() {
   const calculateStudyStreak = async () => {
     try {
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
 
       // Get storage key for this user's streak data
@@ -438,15 +505,18 @@ export default function DashboardPage() {
       const lastVisitKey = `lastVisit_${userId}`;
 
       // Get last visit date from localStorage
-      const lastVisitStr = typeof window !== 'undefined' ? localStorage.getItem(lastVisitKey) : null;
+      const lastVisitStr =
+        typeof window !== "undefined"
+          ? localStorage.getItem(lastVisitKey)
+          : null;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
       if (!lastVisitStr) {
         // First visit
-        if (typeof window !== 'undefined') {
+        if (typeof window !== "undefined") {
           localStorage.setItem(lastVisitKey, today.toISOString());
-          localStorage.setItem(streakKey, '1');
+          localStorage.setItem(streakKey, "1");
         }
         setStudyStreak(1);
         return;
@@ -455,8 +525,13 @@ export default function DashboardPage() {
       const lastVisit = new Date(lastVisitStr);
       lastVisit.setHours(0, 0, 0, 0);
 
-      const daysDiff = Math.floor((today.getTime() - lastVisit.getTime()) / (1000 * 60 * 60 * 24));
-      const currentStreak = typeof window !== 'undefined' ? parseInt(localStorage.getItem(streakKey) || '0') : 0;
+      const daysDiff = Math.floor(
+        (today.getTime() - lastVisit.getTime()) / (1000 * 60 * 60 * 24),
+      );
+      const currentStreak =
+        typeof window !== "undefined"
+          ? parseInt(localStorage.getItem(streakKey) || "0")
+          : 0;
 
       let newStreak = currentStreak;
 
@@ -466,16 +541,16 @@ export default function DashboardPage() {
       } else if (daysDiff === 1) {
         // Increment streak
         newStreak = currentStreak + 1;
-        if (typeof window !== 'undefined') {
+        if (typeof window !== "undefined") {
           localStorage.setItem(lastVisitKey, today.toISOString());
           localStorage.setItem(streakKey, newStreak.toString());
         }
       } else {
         // Streak broken
         newStreak = 1;
-        if (typeof window !== 'undefined') {
+        if (typeof window !== "undefined") {
           localStorage.setItem(lastVisitKey, today.toISOString());
-          localStorage.setItem(streakKey, '1');
+          localStorage.setItem(streakKey, "1");
         }
       }
 
@@ -491,19 +566,38 @@ export default function DashboardPage() {
   const [groupName, setGroupName] = useState("");
   const [course, setCourse] = useState("");
   const [description, setDescription] = useState("");
-  const [groupImagePreview, setGroupImagePreview] = useState<string | null>(null);
+  const [groupImagePreview, setGroupImagePreview] = useState<string | null>(
+    null,
+  );
   const [isJoinGroupOpen, setIsJoinGroupOpen] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [studyStreak, setStudyStreak] = useState(0);
   const [totalResources, setTotalResources] = useState(0);
   const [joinCodeDialogOpen, setJoinCodeDialogOpen] = useState(false);
-  const [selectedGroupForJoinCode, setSelectedGroupForJoinCode] = useState<number | null>(null);
+  const [selectedGroupForJoinCode, setSelectedGroupForJoinCode] = useState<
+    number | null
+  >(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedGroupForDelete, setSelectedGroupForDelete] = useState<{ id: number; name: string } | null>(null);
+  const [selectedGroupForDelete, setSelectedGroupForDelete] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
-  const [selectedGroupForLeave, setSelectedGroupForLeave] = useState<{ id: number; name: string } | null>(null);
+  const [selectedGroupForLeave, setSelectedGroupForLeave] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
-  const groupColors = ["bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500", "bg-pink-500", "bg-yellow-500", "bg-red-500", "bg-indigo-500"];
+  const groupColors = [
+    "bg-blue-500",
+    "bg-green-500",
+    "bg-purple-500",
+    "bg-orange-500",
+    "bg-pink-500",
+    "bg-yellow-500",
+    "bg-red-500",
+    "bg-indigo-500",
+  ];
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -545,7 +639,9 @@ export default function DashboardPage() {
       }
 
       // Get current user ID
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
 
       // Create the group
@@ -587,7 +683,9 @@ export default function DashboardPage() {
       setGroupImagePreview(null);
     } catch (error: unknown) {
       console.error("Error creating group:", error);
-      alert(`Failed to create group: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
+      alert(
+        `Failed to create group: ${error instanceof Error ? error.message : JSON.stringify(error)}`,
+      );
     }
   };
 
@@ -599,12 +697,14 @@ export default function DashboardPage() {
 
     try {
       // Get current user ID
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
 
       // Parse group ID from join code
       const groupId = parseInt(joinCode.trim());
-      
+
       if (isNaN(groupId)) {
         alert("Invalid group ID. Please enter a number.");
         return;
@@ -648,18 +748,20 @@ export default function DashboardPage() {
       if (membershipError) throw membershipError;
 
       alert(`Successfully joined "${group.name}"!`);
-      
+
       // Refresh groups list
       fetchGroups();
       fetchDiscoverGroups();
       fetchRecentActivities();
       fetchTotalResources();
-      
+
       setIsJoinGroupOpen(false);
       setJoinCode("");
     } catch (error: unknown) {
       console.error("Error joining group:", error);
-      alert(`Failed to join group: ${error instanceof Error ? error.message : "Unknown error"}`);
+      alert(
+        `Failed to join group: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   };
 
@@ -708,7 +810,9 @@ export default function DashboardPage() {
       setSelectedGroupForDelete(null);
     } catch (error: unknown) {
       console.error("Error deleting group:", error);
-      alert(`Failed to delete group: ${error instanceof Error ? error.message : "Unknown error"}`);
+      alert(
+        `Failed to delete group: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   };
 
@@ -719,7 +823,9 @@ export default function DashboardPage() {
       const groupId = selectedGroupForLeave.id;
 
       // Get current user ID
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
 
       // Remove the user's membership
@@ -741,14 +847,21 @@ export default function DashboardPage() {
       setSelectedGroupForLeave(null);
     } catch (error: unknown) {
       console.error("Error leaving group:", error);
-      alert(`Failed to leave group: ${error instanceof Error ? error.message : "Unknown error"}`);
+      alert(
+        `Failed to leave group: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   };
 
-  const handleJoinDiscoverGroup = async (groupId: number, groupName: string) => {
+  const handleJoinDiscoverGroup = async (
+    groupId: number,
+    groupName: string,
+  ) => {
     try {
       // Get current user ID
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const userId = user?.id ? parseInt(user.id.substring(0, 8), 16) : 1;
 
       // Check if user is already a member
@@ -775,7 +888,7 @@ export default function DashboardPage() {
       if (membershipError) throw membershipError;
 
       alert(`Successfully joined "${groupName}"!`);
-      
+
       // Refresh groups list
       fetchGroups();
       fetchDiscoverGroups();
@@ -783,7 +896,9 @@ export default function DashboardPage() {
       fetchTotalResources();
     } catch (error: unknown) {
       console.error("Error joining group:", error);
-      alert(`Failed to join group: ${error instanceof Error ? error.message : "Unknown error"}`);
+      alert(
+        `Failed to join group: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   };
 
@@ -795,7 +910,7 @@ export default function DashboardPage() {
     return studyGroups.filter(
       (group) =>
         group.name.toLowerCase().includes(query) ||
-        group.description.toLowerCase().includes(query)
+        group.description.toLowerCase().includes(query),
     );
   }, [searchQuery, studyGroups]);
 
@@ -807,7 +922,7 @@ export default function DashboardPage() {
     return discoverGroups.filter(
       (group) =>
         group.name.toLowerCase().includes(query) ||
-        group.description.toLowerCase().includes(query)
+        group.description.toLowerCase().includes(query),
     );
   }, [searchQuery, discoverGroups]);
 
@@ -820,21 +935,22 @@ export default function DashboardPage() {
       (activity) =>
         activity.groupName.toLowerCase().includes(query) ||
         activity.authorName.toLowerCase().includes(query) ||
-        (activity.message && activity.message.toLowerCase().includes(query))
+        (activity.message && activity.message.toLowerCase().includes(query)),
     );
   }, [searchQuery, recentActivities]);
 
   const getActivityDescription = (activity: RecentActivity): string => {
     const isCurrentUser = activity.authorId === currentUserId;
-    const authorName = isCurrentUser ? 'You' : activity.authorName;
-    
-    if (activity.activityType === 'attachment') {
-      const fileName = activity.attachmentUrl?.split('/').pop() || 'a file';
+    const authorName = isCurrentUser ? "You" : activity.authorName;
+
+    if (activity.activityType === "attachment") {
+      const fileName = activity.attachmentUrl?.split("/").pop() || "a file";
       return `${authorName} uploaded ${fileName}`;
     } else if (activity.message) {
-      const messagePreview = activity.message.length > 50 
-        ? activity.message.substring(0, 50) + '...'
-        : activity.message;
+      const messagePreview =
+        activity.message.length > 50
+          ? activity.message.substring(0, 50) + "..."
+          : activity.message;
       return `${authorName}: ${messagePreview}`;
     }
     return `${authorName} posted in ${activity.groupName}`;
@@ -852,21 +968,23 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-background">
-      <aside className="fixed left-0 top-0 h-screen flex flex-col transition-all duration-300 z-50">
+    <div className="bg-background flex min-h-screen">
+      <aside className="fixed top-0 left-0 z-50 flex h-screen flex-col transition-all duration-300">
         <Collapsible
           open={!isSidebarCollapsed}
           onOpenChange={(open: boolean) => setIsSidebarCollapsed(!open)}
-          className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} h-full bg-card border-r border-border flex flex-col`}
+          className={`${isSidebarCollapsed ? "w-16" : "w-64"} bg-card border-border flex h-full flex-col border-r`}
         >
           {/* Collapse Trigger */}
-          <div className="absolute right-4 top-6 z-10">
+          <div className="absolute top-6 right-4 z-10">
             <CollapsibleTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 p-0 bg-card border border-border"
-                title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                className="bg-card border-border h-8 w-8 border p-0"
+                title={
+                  isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+                }
               >
                 {isSidebarCollapsed ? (
                   <ChevronRight className="h-4 w-4" />
@@ -878,29 +996,31 @@ export default function DashboardPage() {
             </CollapsibleTrigger>
           </div>
 
-          <CollapsibleContent className="flex-1 flex flex-col h-full">
+          <CollapsibleContent className="flex h-full flex-1 flex-col">
             <div>
               {/* Logo */}
-              <div className="p-6 border-b border-border">
+              <div className="border-border border-b p-6">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-[#4B9CD3] rounded flex items-center justify-center flex-shrink-0">
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-[#4B9CD3]">
                     <Book className="h-5 w-5 text-white" />
                   </div>
-                  <span className="text-xl font-bold text-foreground whitespace-nowrap">StudyBuddy</span>
+                  <span className="text-foreground text-xl font-bold whitespace-nowrap">
+                    StudyBuddy
+                  </span>
                 </div>
               </div>
 
               {/* Menu */}
-              <nav className="p-4 space-y-6">
+              <nav className="space-y-6 p-4">
                 <div>
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  <h3 className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">
                     Menu
                   </h3>
                   <ul className="space-y-1">
                     <li>
                       <button
                         onClick={() => router.push("/dashboard")}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg bg-accent text-foreground font-medium"
+                        className="bg-accent text-foreground flex w-full items-center gap-3 rounded-lg px-3 py-2 font-medium"
                         title="Dashboard"
                       >
                         <Home className="h-5 w-5 flex-shrink-0" />
@@ -910,18 +1030,18 @@ export default function DashboardPage() {
                     <li>
                       <button
                         onClick={() => router.push("/study-groups")}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:bg-accent transition-colors"
+                        className="text-foreground hover:bg-accent flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors"
                         title="Group Chats"
                       >
                         <Users className="h-5 w-5 flex-shrink-0" />
                         <span>Group Chats</span>
                       </button>
                     </li>
-                   
+
                     <li>
                       <button
                         onClick={() => router.push("/my-notes")}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:bg-accent transition-colors"
+                        className="text-foreground hover:bg-accent flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors"
                         title="My Notes"
                       >
                         <FileText className="h-5 w-5 flex-shrink-0" />
@@ -933,14 +1053,14 @@ export default function DashboardPage() {
 
                 {/* Account */}
                 <div>
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  <h3 className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">
                     Account
                   </h3>
                   <ul className="space-y-1">
                     <li>
                       <button
                         onClick={() => router.push("/settings")}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-foreground hover:bg-accent transition-colors"
+                        className="text-foreground hover:bg-accent flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors"
                         title="Settings"
                       >
                         <Settings className="h-5 w-5 flex-shrink-0" />
@@ -952,24 +1072,29 @@ export default function DashboardPage() {
               </nav>
             </div>
 
-            <div className="mt-auto p-4 border-t border-border">
+            <div className="border-border mt-auto border-t p-4">
               <div className="flex items-center gap-3">
-                <Avatar className="w-10 h-10 flex-shrink-0">
-                  <AvatarImage 
-                    src={userAvatarUrl || undefined} 
+                <Avatar className="h-10 w-10 flex-shrink-0">
+                  <AvatarImage
+                    src={userAvatarUrl || undefined}
                     className="object-cover"
                   />
                   <AvatarFallback className="bg-muted">
-                    <span className="text-sm font-semibold text-muted-foreground">
-                      {userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                    <span className="text-muted-foreground text-sm font-semibold">
+                      {userName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2)}
                     </span>
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">
+                <div className="min-w-0 flex-1">
+                  <p className="text-foreground truncate text-sm font-medium">
                     {userName}
                   </p>
-                  <p className="text-xs text-muted-foreground truncate">
+                  <p className="text-muted-foreground truncate text-xs">
                     {userEmail}
                   </p>
                 </div>
@@ -980,11 +1105,13 @@ export default function DashboardPage() {
       </aside>
 
       {/* Main Content */}
-      <main className={`flex-1 overflow-y-auto p-8 transition-all duration-300 ${isSidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
+      <main
+        className={`flex-1 overflow-y-auto p-8 transition-all duration-300 ${isSidebarCollapsed ? "ml-16" : "ml-64"}`}
+      >
         {/* Welcome Header */}
         <div className="mb-8 flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
+            <h1 className="text-foreground mb-2 text-3xl font-bold">
               Welcome, {userName}!
             </h1>
             <p className="text-muted-foreground">
@@ -996,48 +1123,52 @@ export default function DashboardPage() {
 
         {/* Group Chats Section */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
+          <div className="mb-6 flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-foreground">Group Chats</h2>
+              <h2 className="text-foreground text-2xl font-bold">
+                Group Chats
+              </h2>
               <p className="text-muted-foreground mt-1">
                 Join course-specific groups to collaborate with classmates
               </p>
             </div>
-              <div className="flex gap-3">
-                <Button
-                  onClick={() => setIsCreateGroupOpen(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Group
-                </Button>
-                <Button
-                  onClick={() => setIsJoinGroupOpen(true)}
-                  variant="outline"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Join Group
-                </Button>
+            <div className="flex gap-3">
+              <Button
+                onClick={() => setIsCreateGroupOpen(true)}
+                className="bg-blue-600 text-white hover:bg-blue-700"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Create Group
+              </Button>
+              <Button
+                onClick={() => setIsJoinGroupOpen(true)}
+                variant="outline"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Join Group
+              </Button>
             </div>
           </div>
 
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-2">
+                    <p className="text-muted-foreground mb-2 text-sm font-medium">
                       Total Groups
                     </p>
-                    <p className="text-3xl font-bold text-foreground">
+                    <p className="text-foreground text-3xl font-bold">
                       {studyGroups.length}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {studyGroups.length === 0 ? 'Create your first group' : 'Across all courses'}
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {studyGroups.length === 0
+                        ? "Create your first group"
+                        : "Across all courses"}
                     </p>
                   </div>
-                  <Users className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                  <Users className="text-muted-foreground h-6 w-6 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -1046,17 +1177,22 @@ export default function DashboardPage() {
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-2">
+                    <p className="text-muted-foreground mb-2 text-sm font-medium">
                       Total Members
                     </p>
-                    <p className="text-3xl font-bold text-foreground">
-                      {studyGroups.reduce((sum, group) => sum + group.members, 0)}
+                    <p className="text-foreground text-3xl font-bold">
+                      {studyGroups.reduce(
+                        (sum, group) => sum + group.members,
+                        0,
+                      )}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {studyGroups.length > 0 ? 'In your groups' : 'Join a group to get started'}
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {studyGroups.length > 0
+                        ? "In your groups"
+                        : "Join a group to get started"}
                     </p>
                   </div>
-                  <Users className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                  <Users className="text-muted-foreground h-6 w-6 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -1065,17 +1201,19 @@ export default function DashboardPage() {
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-2">
+                    <p className="text-muted-foreground mb-2 text-sm font-medium">
                       Messages & Files
                     </p>
-                    <p className="text-3xl font-bold text-foreground">
+                    <p className="text-foreground text-3xl font-bold">
                       {totalResources}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {totalResources > 0 ? 'Across all your groups' : 'No messages yet'}
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {totalResources > 0
+                        ? "Across all your groups"
+                        : "No messages yet"}
                     </p>
                   </div>
-                  <FileText className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                  <FileText className="text-muted-foreground h-6 w-6 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -1084,40 +1222,55 @@ export default function DashboardPage() {
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-2">
+                    <p className="text-muted-foreground mb-2 text-sm font-medium">
                       Study Streak
                     </p>
-                    <p className="text-3xl font-bold text-foreground flex items-center gap-1">
-                      {studyStreak} day{studyStreak !== 1 ? 's' : ''} {studyStreak > 0 && <Flame className="h-5 w-5 text-orange-500" />}
+                    <p className="text-foreground flex items-center gap-1 text-3xl font-bold">
+                      {studyStreak} day{studyStreak !== 1 ? "s" : ""}{" "}
+                      {studyStreak > 0 && (
+                        <Flame className="h-5 w-5 text-orange-500" />
+                      )}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {studyStreak === 0 ? 'Start your streak today!' : studyStreak < 3 ? 'Keep it up!' : studyStreak < 7 ? 'Great job!' : 'Amazing streak!'}
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {studyStreak === 0
+                        ? "Start your streak today!"
+                        : studyStreak < 3
+                          ? "Keep it up!"
+                          : studyStreak < 7
+                            ? "Great job!"
+                            : "Amazing streak!"}
                     </p>
                   </div>
-                  <TrendingUp className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                  <TrendingUp className="text-muted-foreground h-6 w-6 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
           </div>
 
           {/* Tabs and Search */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="flex items-center justify-between mb-4">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
+            <div className="mb-4 flex items-center justify-between">
               <TabsList>
                 <TabsTrigger value="my-groups">My Groups</TabsTrigger>
                 <TabsTrigger value="discover">Discover</TabsTrigger>
-                <TabsTrigger value="recent-activity">Recent Activity</TabsTrigger>
+                <TabsTrigger value="recent-activity">
+                  Recent Activity
+                </TabsTrigger>
               </TabsList>
               <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform" />
                 <Input
                   type="text"
                   placeholder={
-                    activeTab === "recent-activity" 
-                      ? "Search activities..." 
+                    activeTab === "recent-activity"
+                      ? "Search activities..."
                       : activeTab === "discover"
-                      ? "Search groups..."
-                      : "Search your groups..."
+                        ? "Search groups..."
+                        : "Search your groups..."
                   }
                   className="pl-10"
                   value={searchQuery}
@@ -1129,153 +1282,60 @@ export default function DashboardPage() {
             {/* My Groups Tab */}
             <TabsContent value="my-groups" className="mt-6">
               {filteredStudyGroups.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
+                <div className="text-muted-foreground py-12 text-center">
                   <p>Create your first group chat!</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {filteredStudyGroups.map((group) => (
-                <Card 
-                  key={group.id} 
-                  className="hover:shadow-lg transition-shadow cursor-pointer"
-                  onClick={() => router.push(`/groups/${group.id}`)}
-                >
-                  <CardContent className="p-6 relative">
-                    {currentUserId === group.owner_id && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedGroupForDelete({ id: group.id, name: group.name });
-                          setDeleteDialogOpen(true);
-                        }}
-                        className="absolute top-2 right-2 h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-                        title="Delete group"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <div className="flex items-start gap-4">
-                      {group.imageUrl ? (
-                          <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-border">
-                            <img
-                              src={group.imageUrl}
-                              alt={group.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        ) : (
-                          <div
-                            className={`w-12 h-12 ${group.color} rounded-lg flex items-center justify-center flex-shrink-0`}
-                          >
-                            <Book className="h-6 w-6 text-white" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-semibold text-foreground mb-1">
-                            {group.name}
-                          </h3>
-                          <p className="text-sm text-muted-foreground mb-3">
-                            {group.description}
-                          </p>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Users className="h-4 w-4" />
-                              <span>{group.members} members</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <FileText className="h-4 w-4" />
-                              <span>{group.resources} resources</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1.5 mt-3 mb-3">
-                            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="text-xs text-foreground">
-                              Recent activity: {formatTimeAgo(group.lastActivity)}
-                            </span>
-                          </div>
-                          {currentUserId === group.owner_id ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedGroupForJoinCode(group.id);
-                                setJoinCodeDialogOpen(true);
-                              }}
-                              className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
-                            >
-                              <Share2 className="h-4 w-4 mr-2" />
-                              View Join Code
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedGroupForLeave({ id: group.id, name: group.name });
-                                setLeaveDialogOpen(true);
-                              }}
-                              className="w-full border-orange-300 text-orange-700 hover:bg-orange-50"
-                            >
-                              <LogOut className="h-4 w-4 mr-2" />
-                              Leave Group
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-
-            {/* Discover Tab */}
-            <TabsContent value="discover" className="mt-6">
-              {discoverLoading ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <p>Loading groups...</p>
-                </div>
-              ) : filteredDiscoverGroups.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <p>No groups available to discover. Create your own group to get started!</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {filteredDiscoverGroups.map((group) => (
-                    <Card 
-                      key={group.id} 
-                      className="hover:shadow-lg transition-shadow cursor-pointer"
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  {filteredStudyGroups.map((group) => (
+                    <Card
+                      key={group.id}
+                      className="cursor-pointer transition-shadow hover:shadow-lg"
                       onClick={() => router.push(`/groups/${group.id}`)}
                     >
-                      <CardContent className="p-6 relative">
+                      <CardContent className="relative p-6">
+                        {currentUserId === group.owner_id && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedGroupForDelete({
+                                id: group.id,
+                                name: group.name,
+                              });
+                              setDeleteDialogOpen(true);
+                            }}
+                            className="absolute top-2 right-2 h-7 w-7 text-red-600 hover:bg-red-50 hover:text-red-700"
+                            title="Delete group"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                         <div className="flex items-start gap-4">
                           {group.imageUrl ? (
-                            <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-border">
+                            <div className="border-border flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border">
                               <img
                                 src={group.imageUrl}
                                 alt={group.name}
-                                className="w-full h-full object-cover"
+                                className="h-full w-full object-cover"
                               />
                             </div>
                           ) : (
                             <div
-                              className={`w-12 h-12 ${group.color} rounded-lg flex items-center justify-center flex-shrink-0`}
+                              className={`h-12 w-12 ${group.color} flex flex-shrink-0 items-center justify-center rounded-lg`}
                             >
                               <Book className="h-6 w-6 text-white" />
                             </div>
                           )}
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-lg font-semibold text-foreground mb-1">
+                          <div className="min-w-0 flex-1">
+                            <h3 className="text-foreground mb-1 text-lg font-semibold">
                               {group.name}
                             </h3>
-                            <p className="text-sm text-muted-foreground mb-3">
+                            <p className="text-muted-foreground mb-3 text-sm">
                               {group.description}
                             </p>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <div className="text-muted-foreground flex items-center gap-4 text-sm">
                               <div className="flex items-center gap-1">
                                 <Users className="h-4 w-4" />
                                 <span>{group.members} members</span>
@@ -1285,10 +1345,114 @@ export default function DashboardPage() {
                                 <span>{group.resources} resources</span>
                               </div>
                             </div>
-                            <div className="flex items-center gap-1.5 mt-3 mb-3">
-                              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span className="text-xs text-foreground">
-                                Recent activity: {formatTimeAgo(group.lastActivity)}
+                            <div className="mt-3 mb-3 flex items-center gap-1.5">
+                              <Clock className="text-muted-foreground h-3.5 w-3.5" />
+                              <span className="text-foreground text-xs">
+                                Recent activity:{" "}
+                                {formatTimeAgo(group.lastActivity)}
+                              </span>
+                            </div>
+                            {currentUserId === group.owner_id ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedGroupForJoinCode(group.id);
+                                  setJoinCodeDialogOpen(true);
+                                }}
+                                className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
+                              >
+                                <Share2 className="mr-2 h-4 w-4" />
+                                View Join Code
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedGroupForLeave({
+                                    id: group.id,
+                                    name: group.name,
+                                  });
+                                  setLeaveDialogOpen(true);
+                                }}
+                                className="w-full border-orange-300 text-orange-700 hover:bg-orange-50"
+                              >
+                                <LogOut className="mr-2 h-4 w-4" />
+                                Leave Group
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Discover Tab */}
+            <TabsContent value="discover" className="mt-6">
+              {discoverLoading ? (
+                <div className="text-muted-foreground py-12 text-center">
+                  <p>Loading groups...</p>
+                </div>
+              ) : filteredDiscoverGroups.length === 0 ? (
+                <div className="text-muted-foreground py-12 text-center">
+                  <p>
+                    No groups available to discover. Create your own group to
+                    get started!
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  {filteredDiscoverGroups.map((group) => (
+                    <Card
+                      key={group.id}
+                      className="cursor-pointer transition-shadow hover:shadow-lg"
+                      onClick={() => router.push(`/groups/${group.id}`)}
+                    >
+                      <CardContent className="relative p-6">
+                        <div className="flex items-start gap-4">
+                          {group.imageUrl ? (
+                            <div className="border-border flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border">
+                              <img
+                                src={group.imageUrl}
+                                alt={group.name}
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div
+                              className={`h-12 w-12 ${group.color} flex flex-shrink-0 items-center justify-center rounded-lg`}
+                            >
+                              <Book className="h-6 w-6 text-white" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <h3 className="text-foreground mb-1 text-lg font-semibold">
+                              {group.name}
+                            </h3>
+                            <p className="text-muted-foreground mb-3 text-sm">
+                              {group.description}
+                            </p>
+                            <div className="text-muted-foreground flex items-center gap-4 text-sm">
+                              <div className="flex items-center gap-1">
+                                <Users className="h-4 w-4" />
+                                <span>{group.members} members</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <FileText className="h-4 w-4" />
+                                <span>{group.resources} resources</span>
+                              </div>
+                            </div>
+                            <div className="mt-3 mb-3 flex items-center gap-1.5">
+                              <Clock className="text-muted-foreground h-3.5 w-3.5" />
+                              <span className="text-foreground text-xs">
+                                Recent activity:{" "}
+                                {formatTimeAgo(group.lastActivity)}
                               </span>
                             </div>
                             <Button
@@ -1300,7 +1464,7 @@ export default function DashboardPage() {
                               }}
                               className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
                             >
-                              <Plus className="h-4 w-4 mr-2" />
+                              <Plus className="mr-2 h-4 w-4" />
                               Join Group
                             </Button>
                           </div>
@@ -1315,38 +1479,40 @@ export default function DashboardPage() {
             {/* Recent Activity Tab */}
             <TabsContent value="recent-activity" className="mt-6">
               {activitiesLoading ? (
-                <div className="text-center py-12 text-muted-foreground">
+                <div className="text-muted-foreground py-12 text-center">
                   <p>Loading activities...</p>
                 </div>
               ) : filteredRecentActivities.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <p>No recent activity. Join groups and start collaborating!</p>
+                <div className="text-muted-foreground py-12 text-center">
+                  <p>
+                    No recent activity. Join groups and start collaborating!
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {filteredRecentActivities.map((activity) => (
                     <Card
                       key={activity.id}
-                      className="hover:shadow-md transition-shadow cursor-pointer"
+                      className="cursor-pointer transition-shadow hover:shadow-md"
                       onClick={() => router.push(`/groups/${activity.groupId}`)}
                     >
                       <CardContent className="p-4">
                         <div className="flex items-start gap-4">
                           <div
-                            className={`w-10 h-10 ${activity.groupColor} rounded-lg flex items-center justify-center flex-shrink-0`}
+                            className={`h-10 w-10 ${activity.groupColor} flex flex-shrink-0 items-center justify-center rounded-lg`}
                           >
                             <Book className="h-5 w-5 text-white" />
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="text-sm font-semibold text-foreground">
+                          <div className="min-w-0 flex-1">
+                            <div className="mb-1 flex items-center gap-2">
+                              <h3 className="text-foreground text-sm font-semibold">
                                 {activity.groupName}
                               </h3>
                             </div>
-                            <p className="text-sm text-foreground mb-2">
+                            <p className="text-foreground mb-2 text-sm">
                               {getActivityDescription(activity)}
                             </p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-muted-foreground text-xs">
                               {formatTimeAgo(activity.createdAt)}
                             </p>
                           </div>
@@ -1413,7 +1579,7 @@ export default function DashboardPage() {
                   <img
                     src={groupImagePreview}
                     alt="Group preview"
-                    className="w-24 h-24 object-cover rounded-lg border border-border"
+                    className="border-border h-24 w-24 rounded-lg border object-cover"
                   />
                 </div>
               )}
@@ -1434,7 +1600,7 @@ export default function DashboardPage() {
             </Button>
             <Button
               onClick={handleCreateGroup}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-blue-600 text-white hover:bg-blue-700"
               disabled={!groupName || !course || !description}
             >
               Create Group
@@ -1464,15 +1630,12 @@ export default function DashboardPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsJoinGroupOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setIsJoinGroupOpen(false)}>
               Cancel
             </Button>
             <Button
               onClick={handleJoinGroup}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-blue-600 text-white hover:bg-blue-700"
               disabled={!joinCode}
             >
               Join Group
@@ -1493,33 +1656,37 @@ export default function DashboardPage() {
           <div className="space-y-4 py-4">
             {selectedGroupForJoinCode && (
               <div className="space-y-3">
-                <div className="p-6 bg-blue-50 border-2 border-blue-200 rounded-lg text-center">
-                  <p className="text-sm font-medium text-blue-900 mb-2">
+                <div className="rounded-lg border-2 border-blue-200 bg-blue-50 p-6 text-center">
+                  <p className="mb-2 text-sm font-medium text-blue-900">
                     Your Join Code
                   </p>
-                  <p className="text-4xl font-bold text-blue-700 font-mono tracking-wider">
+                  <p className="font-mono text-4xl font-bold tracking-wider text-blue-700">
                     {selectedGroupForJoinCode}
                   </p>
                 </div>
                 <Button
-                  onClick={() => selectedGroupForJoinCode && handleCopyJoinCode(selectedGroupForJoinCode)}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() =>
+                    selectedGroupForJoinCode &&
+                    handleCopyJoinCode(selectedGroupForJoinCode)
+                  }
+                  className="w-full bg-blue-600 text-white hover:bg-blue-700"
                   size="lg"
                 >
                   {copiedGroupId === selectedGroupForJoinCode ? (
                     <>
-                      <Check className="h-5 w-5 mr-2" />
+                      <Check className="mr-2 h-5 w-5" />
                       Copied!
                     </>
                   ) : (
                     <>
-                      <Copy className="h-5 w-5 mr-2" />
+                      <Copy className="mr-2 h-5 w-5" />
                       Copy Join Code
                     </>
                   )}
                 </Button>
-                <p className="text-xs text-muted-foreground text-center">
-                  Anyone with this code can join your group by entering it in the &quot;Join Group&quot; section
+                <p className="text-muted-foreground text-center text-xs">
+                  Anyone with this code can join your group by entering it in
+                  the &quot;Join Group&quot; section
                 </p>
               </div>
             )}
@@ -1544,20 +1711,22 @@ export default function DashboardPage() {
           <DialogHeader>
             <DialogTitle>Delete Study Group</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this study group? This action cannot be undone.
+              Are you sure you want to delete this study group? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             {selectedGroupForDelete && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm font-medium text-red-900 mb-1">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                <p className="mb-1 text-sm font-medium text-red-900">
                   Group to be deleted:
                 </p>
                 <p className="text-base font-semibold text-red-700">
                   {selectedGroupForDelete.name}
                 </p>
-                <p className="text-xs text-red-600 mt-2">
-                  This will permanently delete the group, all memberships, and all messages.
+                <p className="mt-2 text-xs text-red-600">
+                  This will permanently delete the group, all memberships, and
+                  all messages.
                 </p>
               </div>
             )}
@@ -1574,9 +1743,9 @@ export default function DashboardPage() {
             </Button>
             <Button
               onClick={handleDeleteGroup}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-red-600 text-white hover:bg-red-700"
             >
-              <Trash2 className="h-4 w-4 mr-2" />
+              <Trash2 className="mr-2 h-4 w-4" />
               Delete Group
             </Button>
           </DialogFooter>
@@ -1589,20 +1758,22 @@ export default function DashboardPage() {
           <DialogHeader>
             <DialogTitle>Leave Study Group</DialogTitle>
             <DialogDescription>
-              Are you sure you want to leave this study group? You can rejoin later using the join code.
+              Are you sure you want to leave this study group? You can rejoin
+              later using the join code.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             {selectedGroupForLeave && (
-              <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                <p className="text-sm font-medium text-orange-900 mb-1">
+              <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
+                <p className="mb-1 text-sm font-medium text-orange-900">
                   Group you&apos;ll be leaving:
                 </p>
                 <p className="text-base font-semibold text-orange-700">
                   {selectedGroupForLeave.name}
                 </p>
-                <p className="text-xs text-orange-600 mt-2">
-                  You will no longer have access to this group&apos;s messages and resources.
+                <p className="mt-2 text-xs text-orange-600">
+                  You will no longer have access to this group&apos;s messages
+                  and resources.
                 </p>
               </div>
             )}
@@ -1619,9 +1790,9 @@ export default function DashboardPage() {
             </Button>
             <Button
               onClick={handleLeaveGroup}
-              className="bg-orange-600 hover:bg-orange-700 text-white"
+              className="bg-orange-600 text-white hover:bg-orange-700"
             >
-              <LogOut className="h-4 w-4 mr-2" />
+              <LogOut className="mr-2 h-4 w-4" />
               Leave Group
             </Button>
           </DialogFooter>
