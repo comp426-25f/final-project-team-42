@@ -1,6 +1,6 @@
 /**
  * AI Study Helper Modal Component
- * Allows users to paste notes to get AI-generated summaries, quizzes, and flashcards
+ * Allows users to upload PDFs or paste notes to get AI-generated summaries, quizzes, and flashcards
  */
 
 import { useState, useEffect, useRef } from "react";
@@ -14,23 +14,10 @@ import {
 } from "../ui/dialog";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import {
   Brain,
   FileText,
@@ -39,6 +26,11 @@ import {
   XCircle,
   Loader2,
 } from "lucide-react";
+import {
+  extractTextFromPDF,
+  validateFile,
+  validateTextLength,
+} from "../../utils/pdf-extractor";
 
 // Types
 interface QuizQuestion {
@@ -62,50 +54,27 @@ interface AIResult {
 export default function AIStudyHelper() {
   const [open, setOpen] = useState(false);
   const [inputText, setInputText] = useState("");
+  const [uploadedFileName, setUploadedFileName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<AIResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedAnswers, setSelectedAnswers] = useState<
-    Record<number, number>
-  >({});
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [flippedCards, setFlippedCards] = useState<Record<number, boolean>>({});
   const [provider, setProvider] = useState<"openai" | "gemini">("gemini");
   const [apiKey, setApiKey] = useState("");
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
-  const validateText = (text: string, maxLength: number = 15000) => {
-    if (!text || text.trim().length === 0) {
-      return {
-        valid: false,
-        error: "Please provide some text to analyze.",
-      };
-    }
-
-    if (text.length > maxLength) {
-      return {
-        valid: false,
-        error: `Text exceeds maximum length of ${maxLength} characters.`,
-      };
-    }
-
-    return { valid: true };
-  };
-
   // Load API key and provider from localStorage on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedProvider = localStorage.getItem("ai_provider") as
-        | "openai"
-        | "gemini";
-      const savedKey = localStorage.getItem(
-        `${savedProvider || "gemini"}_api_key`,
-      );
-
+      const savedProvider = localStorage.getItem("ai_provider") as "openai" | "gemini";
+      const savedKey = localStorage.getItem(`${savedProvider || "gemini"}_api_key`);
+      
       if (savedProvider) {
         setProvider(savedProvider);
       }
-
+      
       if (savedKey) {
         setApiKey(savedKey);
       } else {
@@ -157,6 +126,45 @@ export default function AIStudyHelper() {
   };
 
   /**
+   * Handle PDF file upload and text extraction (client-side)
+   */
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validation = validateFile(file);
+    if (!validation.valid) {
+      setError(validation.error || "Invalid file");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setUploadedFileName(file.name);
+
+    try {
+      const extractedText = await extractTextFromPDF(file);
+
+      const textValidation = validateTextLength(extractedText);
+      if (!textValidation.valid) {
+        throw new Error(textValidation.error || "Text validation failed");
+      }
+
+      setInputText(extractedText);
+      setError("");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to extract text from PDF";
+      setError(message || "Failed to extract text from PDF");
+      setUploadedFileName("");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
    * Submit text to AI API for processing
    */
   const handleSubmit = async (type: "summary" | "quiz" | "flashcards") => {
@@ -169,7 +177,7 @@ export default function AIStudyHelper() {
     }
 
     // Validate text
-    const validation = validateText(inputText);
+    const validation = validateTextLength(inputText);
     if (!validation.valid) {
       setError(validation.error || "Invalid text");
       return;
@@ -209,8 +217,9 @@ export default function AIStudyHelper() {
       } else {
         throw new Error("Invalid response from server");
       }
-    } catch (err: any) {
-      setError(err.message || "An error occurred. Please try again.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "An error occurred. Please try again.";
+      setError(message || "An error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -221,6 +230,7 @@ export default function AIStudyHelper() {
    */
   const handleReset = () => {
     setInputText("");
+    setUploadedFileName("");
     setResult(null);
     setError("");
     setSelectedAnswers({});
@@ -248,43 +258,34 @@ export default function AIStudyHelper() {
           AI Study Helper
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-purple-500" />
             AI Study Helper
           </DialogTitle>
           <DialogDescription>
-            Paste your notes to generate summaries, quiz questions, and
-            flashcards
+            Upload a PDF or paste your notes to generate summaries, quiz questions, and flashcards
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* API Key Section */}
           {showApiKeyInput ? (
-            <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
-              <CardContent className="space-y-3 p-4">
+            <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
+              <CardContent className="p-4 space-y-3">
                 <div className="flex items-start gap-2">
-                  <Sparkles className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600" />
+                  <Sparkles className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <h3 className="mb-1 text-sm font-semibold">
-                      AI Provider API Key Required
-                    </h3>
-                    <p className="text-muted-foreground mb-3 text-xs">
-                      Choose your AI provider and enter your API key. Your key
-                      is stored locally in your browser only.
+                    <h3 className="font-semibold text-sm mb-1">AI Provider API Key Required</h3>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Choose your AI provider and enter your API key. Your key is stored locally in your browser only.
                     </p>
-
+                    
                     {/* Provider Selection */}
                     <div className="mb-3">
-                      <Label className="mb-1 text-xs">Select AI Provider</Label>
-                      <Select
-                        value={provider}
-                        onValueChange={(value) =>
-                          handleProviderChange(value as "openai" | "gemini")
-                        }
-                      >
+                      <Label className="text-xs mb-1">Select AI Provider</Label>
+                      <Select value={provider} onValueChange={(value) => handleProviderChange(value as "openai" | "gemini")}>
                         <SelectTrigger className="w-full">
                           <SelectValue />
                         </SelectTrigger>
@@ -292,19 +293,13 @@ export default function AIStudyHelper() {
                           <SelectItem value="gemini">
                             <div className="flex flex-col items-start">
                               <span className="font-medium">Google Gemini</span>
-                              <span className="text-muted-foreground text-xs">
-                                FREE - 1,500 requests/day
-                              </span>
+                              <span className="text-xs text-muted-foreground">FREE - 1,500 requests/day</span>
                             </div>
                           </SelectItem>
                           <SelectItem value="openai">
                             <div className="flex flex-col items-start">
-                              <span className="font-medium">
-                                OpenAI GPT-3.5
-                              </span>
-                              <span className="text-muted-foreground text-xs">
-                                Paid - ~$0.002/request
-                              </span>
+                              <span className="font-medium">OpenAI GPT-3.5</span>
+                              <span className="text-xs text-muted-foreground">Paid - ~$0.002/request</span>
                             </div>
                           </SelectItem>
                         </SelectContent>
@@ -315,13 +310,9 @@ export default function AIStudyHelper() {
                     <div className="flex gap-2">
                       <Input
                         type="password"
-                        placeholder={
-                          provider === "gemini" ? "AIza..." : "sk-proj-..."
-                        }
+                        placeholder={provider === "gemini" ? "AIza..." : "sk-proj-..."}
                         value={apiKey}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                          setApiKey(e.target.value)
-                        }
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApiKey(e.target.value)}
                         className="flex-1"
                       />
                       <Button
@@ -332,9 +323,9 @@ export default function AIStudyHelper() {
                         Save Key
                       </Button>
                     </div>
-
+                    
                     {/* Provider-specific instructions */}
-                    <p className="text-muted-foreground mt-2 text-xs">
+                    <p className="text-xs text-muted-foreground mt-2">
                       {provider === "gemini" ? (
                         <>
                           Get your FREE Gemini key from:{" "}
@@ -366,12 +357,11 @@ export default function AIStudyHelper() {
               </CardContent>
             </Card>
           ) : (
-            <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950">
+            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
                 <span className="text-sm text-green-800 dark:text-green-200">
-                  {provider === "gemini" ? "Gemini" : "OpenAI"} API Key
-                  configured ({apiKey.substring(0, 8)}...)
+                  {provider === "gemini" ? "Gemini" : "OpenAI"} API Key configured ({apiKey.substring(0, 8)}...)
                 </span>
               </div>
               <div className="flex gap-2">
@@ -398,8 +388,33 @@ export default function AIStudyHelper() {
           {/* Input Section */}
           {!result && !showApiKeyInput && (
             <div className="space-y-4">
+              {/* PDF Upload Section */}
               <div>
-                <Label htmlFor="text-input">Paste Your Notes</Label>
+                <Label htmlFor="file-input">Upload PDF</Label>
+                <div className="mt-2 flex items-center gap-2">
+                  <Input
+                    id="file-input"
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleFileUpload}
+                    disabled={loading}
+                    className="cursor-pointer"
+                  />
+                  {uploadedFileName && (
+                    <div className="flex items-center gap-2 text-sm text-green-600">
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span className="truncate max-w-[200px]">{uploadedFileName}</span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Max file size: 10MB. Text will be extracted automatically.
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="text-input">Or Paste Your Notes</Label>
                 <Textarea
                   id="text-input"
                   placeholder="Paste your study notes here..."
@@ -408,15 +423,15 @@ export default function AIStudyHelper() {
                   rows={10}
                   className="mt-2"
                 />
-                <p className="text-muted-foreground mt-1 text-xs">
+                <p className="text-xs text-muted-foreground mt-1">
                   {inputText.length} / 15,000 characters
                 </p>
               </div>
 
               {error && (
-                <div className="bg-destructive/10 border-destructive/20 flex items-start gap-2 rounded-md border p-3">
-                  <XCircle className="text-destructive mt-0.5 h-5 w-5 flex-shrink-0" />
-                  <p className="text-destructive text-sm">{error}</p>
+                <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3 flex items-start gap-2">
+                  <XCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-destructive">{error}</p>
                 </div>
               )}
 
@@ -476,7 +491,7 @@ export default function AIStudyHelper() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
                       <p className="whitespace-pre-wrap">{result.summary}</p>
                     </div>
                   </CardContent>
@@ -497,10 +512,7 @@ export default function AIStudyHelper() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {result.quiz.map((q, idx) => (
-                      <div
-                        key={idx}
-                        className="space-y-3 rounded-lg border p-4"
-                      >
+                      <div key={idx} className="border rounded-lg p-4 space-y-3">
                         <p className="font-medium">
                           {idx + 1}. {q.question}
                         </p>
@@ -508,8 +520,7 @@ export default function AIStudyHelper() {
                           {q.options.map((option, optIdx) => {
                             const isSelected = selectedAnswers[idx] === optIdx;
                             const isCorrect = q.correctAnswer === optIdx;
-                            const showResult =
-                              selectedAnswers[idx] !== undefined;
+                            const showResult = selectedAnswers[idx] !== undefined;
 
                             return (
                               <button
@@ -520,13 +531,13 @@ export default function AIStudyHelper() {
                                     [idx]: optIdx,
                                   }))
                                 }
-                                className={`w-full rounded border p-3 text-left transition-colors ${
+                                className={`w-full text-left p-3 rounded border transition-colors ${
                                   showResult && isCorrect
-                                    ? "border-green-500 bg-green-50 dark:bg-green-950"
+                                    ? "bg-green-50 border-green-500 dark:bg-green-950"
                                     : showResult && isSelected
-                                      ? "border-red-500 bg-red-50 dark:bg-red-950"
+                                      ? "bg-red-50 border-red-500 dark:bg-red-950"
                                       : isSelected
-                                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
+                                        ? "bg-blue-50 border-blue-500 dark:bg-blue-950"
                                         : "hover:bg-muted"
                                 }`}
                               >
@@ -543,13 +554,12 @@ export default function AIStudyHelper() {
                             );
                           })}
                         </div>
-                        {selectedAnswers[idx] !== undefined &&
-                          q.explanation && (
-                            <div className="bg-muted rounded p-3 text-sm">
-                              <p className="mb-1 font-medium">Explanation:</p>
-                              <p>{q.explanation}</p>
-                            </div>
-                          )}
+                        {selectedAnswers[idx] !== undefined && q.explanation && (
+                          <div className="bg-muted p-3 rounded text-sm">
+                            <p className="font-medium mb-1">Explanation:</p>
+                            <p>{q.explanation}</p>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </CardContent>
@@ -569,26 +579,24 @@ export default function AIStudyHelper() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {result.flashcards.map((card, idx) => (
                         <div
                           key={idx}
                           onClick={() => toggleFlashcard(idx)}
-                          className="perspective-1000 h-40 cursor-pointer"
+                          className="cursor-pointer h-40 perspective-1000"
                         >
                           <div
-                            className={`transform-style-3d relative h-full w-full transition-transform duration-500 ${
+                            className={`relative w-full h-full transition-transform duration-500 transform-style-3d ${
                               flippedCards[idx] ? "rotate-y-180" : ""
                             }`}
                           >
                             {/* Front of card */}
-                            <div className="border-primary bg-card absolute inset-0 flex items-center justify-center rounded-lg border-2 p-4 backface-hidden">
-                              <p className="text-center font-medium">
-                                {card.front}
-                              </p>
+                            <div className="absolute inset-0 backface-hidden rounded-lg border-2 border-primary bg-card p-4 flex items-center justify-center">
+                              <p className="text-center font-medium">{card.front}</p>
                             </div>
                             {/* Back of card */}
-                            <div className="border-secondary bg-secondary/20 absolute inset-0 flex rotate-y-180 items-center justify-center rounded-lg border-2 p-4 backface-hidden">
+                            <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-lg border-2 border-secondary bg-secondary/20 p-4 flex items-center justify-center">
                               <p className="text-center">{card.back}</p>
                             </div>
                           </div>
@@ -599,11 +607,7 @@ export default function AIStudyHelper() {
                 </Card>
               )}
 
-              <Button
-                onClick={handleReset}
-                variant="outline"
-                className="w-full"
-              >
+              <Button onClick={handleReset} variant="outline" className="w-full">
                 Generate Another
               </Button>
             </div>
@@ -613,3 +617,4 @@ export default function AIStudyHelper() {
     </Dialog>
   );
 }
+
