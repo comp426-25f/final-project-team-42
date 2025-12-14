@@ -50,9 +50,10 @@ import { ModeToggle } from "@/components/theme/mode-toggle";
 
 type GroupsPageProps = {
   user: Subject | null;
+  authorId: number | null;
 };
 
-export default function GroupsPage({ user }: GroupsPageProps) {
+export default function GroupsPage({ user, authorId }: GroupsPageProps) {
   const supabase = createSupabaseComponentClient();
   const router = useRouter();
   const utils = api.useUtils();
@@ -451,7 +452,7 @@ export default function GroupsPage({ user }: GroupsPageProps) {
                 <GroupChat
                   group={selectedGroup as GroupChatGroup}
                   user={user}
-                  authorId={null}
+                  authorId={authorId}
                 />
               ) : (
                 <div
@@ -598,9 +599,29 @@ export const getServerSideProps: GetServerSideProps<GroupsPageProps> = async (co
     data: { user: authUser },
   } = await supabase.auth.getUser();
 
+  let subject: Subject | null = null;
+  let authorId: number | null = null;
+
+  if (authUser) {
+    subject = { id: authUser.id } as Subject;
+
+    if (authUser.email) {
+      const { data: dbUser } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", authUser.email)
+        .maybeSingle();
+
+      if (dbUser?.id != null) {
+        authorId = dbUser.id;
+      }
+    }
+  }
+
   return {
     props: {
-      user: authUser ? ({ id: authUser.id } as Subject) : null,
+      user: subject,
+      authorId,
     },
   };
 };

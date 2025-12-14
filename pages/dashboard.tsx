@@ -206,46 +206,124 @@ export default function DashboardPage() {
       "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500",
       "bg-pink-500", "bg-yellow-500", "bg-red-500", "bg-indigo-500",
     ];
-    if (groupsData && groupsData.length > 0) {
+    
+    const fetchGroupStats = async () => {
+      if (!groupsData || groupsData.length === 0) {
+        setStudyGroups([]);
+        setLoading(false);
+        return;
+      }
+
+      const groupIds = groupsData.map((g) => g.id);
+
+      // Fetch member counts
+      const { data: memberData } = await supabase
+        .from("memberships")
+        .select("group_id")
+        .in("group_id", groupIds);
+
+      // Fetch message counts and last activity
+      const { data: messageData } = await supabase
+        .from("messages")
+        .select("group_id, created_at")
+        .in("group_id", groupIds)
+        .order("created_at", { ascending: false });
+
+      // Count members per group
+      const memberCounts: Record<number, number> = {};
+      memberData?.forEach((m) => {
+        memberCounts[m.group_id] = (memberCounts[m.group_id] || 0) + 1;
+      });
+
+      // Count messages and get last activity per group
+      const messageCounts: Record<number, number> = {};
+      const lastActivity: Record<number, Date> = {};
+      messageData?.forEach((m) => {
+        messageCounts[m.group_id] = (messageCounts[m.group_id] || 0) + 1;
+        if (!lastActivity[m.group_id]) {
+          lastActivity[m.group_id] = new Date(m.created_at);
+        }
+      });
+
       const formattedGroups: StudyGroup[] = groupsData.map((group) => ({
         id: group.id,
         name: group.name,
         description: group.description || "",
-        members: 0,
-        resources: 0,
-        lastActivity: new Date(group.createdAt),
+        members: memberCounts[group.id] || 0,
+        resources: messageCounts[group.id] || 0,
+        lastActivity: lastActivity[group.id] || new Date(group.createdAt),
         color: colors[group.id % colors.length],
         imageUrl: null,
         owner_id: group.ownerId,
       }));
+      
       setStudyGroups(formattedGroups);
       setLoading(false);
-    } else if (groupsData && groupsData.length === 0) {
-      setStudyGroups([]);
-      setLoading(false);
-    }
-  }, [groupsData]);
+    };
+
+    fetchGroupStats();
+  }, [groupsData, supabase]);
 
   useEffect(() => {
     const colors = [
       "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500",
       "bg-pink-500", "bg-yellow-500", "bg-red-500", "bg-indigo-500",
     ];
-    if (discoverGroupsData && discoverGroupsData.length > 0) {
+    
+    const fetchDiscoverStats = async () => {
+      if (!discoverGroupsData || discoverGroupsData.length === 0) {
+        setDiscoverGroups([]);
+        return;
+      }
+
+      const groupIds = discoverGroupsData.map((g) => g.id);
+
+      // Fetch member counts
+      const { data: memberData } = await supabase
+        .from("memberships")
+        .select("group_id")
+        .in("group_id", groupIds);
+
+      // Fetch message counts and last activity
+      const { data: messageData } = await supabase
+        .from("messages")
+        .select("group_id, created_at")
+        .in("group_id", groupIds)
+        .order("created_at", { ascending: false });
+
+      // Count members per group
+      const memberCounts: Record<number, number> = {};
+      memberData?.forEach((m) => {
+        memberCounts[m.group_id] = (memberCounts[m.group_id] || 0) + 1;
+      });
+
+      // Count messages and get last activity per group
+      const messageCounts: Record<number, number> = {};
+      const lastActivity: Record<number, Date> = {};
+      messageData?.forEach((m) => {
+        messageCounts[m.group_id] = (messageCounts[m.group_id] || 0) + 1;
+        if (!lastActivity[m.group_id]) {
+          lastActivity[m.group_id] = new Date(m.created_at);
+        }
+      });
+
       const formattedGroups: StudyGroup[] = discoverGroupsData.map((group) => ({
         id: group.id,
         name: group.name,
         description: group.description || "",
-        members: 0,
-        resources: 0,
-        lastActivity: new Date(group.createdAt),
+        members: memberCounts[group.id] || 0,
+        resources: messageCounts[group.id] || 0,
+        lastActivity: lastActivity[group.id] || new Date(group.createdAt),
         color: colors[group.id % colors.length],
         imageUrl: null,
         owner_id: group.ownerId,
       }));
+      
       setDiscoverGroups(formattedGroups);
-    }
-  }, [discoverGroupsData]);
+    };
+
+    fetchDiscoverStats();
+  }, [discoverGroupsData, supabase]);
 
 
 

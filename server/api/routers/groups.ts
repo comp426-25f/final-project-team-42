@@ -1,8 +1,8 @@
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 import { Group } from "@/server/models/responses";
 import { db } from "@/server/db";
-import { eq, desc, ilike, or, and } from "drizzle-orm";
-import { groupsTable, membershipsTable } from "@/server/db/schema";
+import { eq, desc, ilike, or, and, sql, count } from "drizzle-orm";
+import { groupsTable, membershipsTable, messagesTable } from "@/server/db/schema";
 import { NewGroup, UpdateGroup } from "@/server/models/inputs";
 import { Subject } from "@/server/models/auth";
 import { TRPCError } from "@trpc/server";
@@ -417,6 +417,180 @@ const joinGroup = protectedProcedure
     });
   });
 
+const dateSchema = z.preprocess((val) => {
+  if (val instanceof Date) return val;
+  if (typeof val === 'string' || typeof val === 'number') {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return new Date();
+}, z.date());
+
+const getGroupsWithStats = protectedProcedure
+  .output(
+    z.array(
+      z.object({
+        id: z.number(),
+        name: z.string(),
+        description: z.string().nullable(),
+        ownerId: z.number(),
+        isPrivate: z.boolean(),
+        createdAt: dateSchema,
+        memberCount: z.number(),
+        resourceCount: z.number(),
+        lastActivityAt: dateSchema.nullable(),
+      })
+    )
+  )
+  .query(async ({ ctx }) => {
+    const { subject } = ctx;
+    const userId = getUserIdFromSubject(subject);
+
+    // Get user's group memberships
+    const memberships = await db.query.membershipsTable.findMany({
+      where: eq(membershipsTable.user_id, userId),
+      columns: { group_id: true },
+    });
+
+    const groupIds = memberships.map((m) => m.group_id);
+    if (groupIds.length === 0) return [];
+
+    // Get groups with member counts and last activity
+    const groupsWithStats = await Promise.all(
+      groupIds.map(async (groupId) => {
+        const group = await db.query.groupsTable.findFirst({
+          where: eq(groupsTable.id, groupId),
+          columns: {
+            id: true,
+            name: true,
+            description: true,
+            owner_id: true,
+            is_private: true,
+            created_at: true,
+          },
+        });
+
+        if (!group) return null;
+
+        // Count members
+        const [memberResult] = await db
+          .select({ count: count() })
+          .from(membershipsTable)
+          .where(eq(membershipsTable.group_id, groupId));
+
+        // Count messages/resources
+        const [resourceResult] = await db
+          .select({ count: count() })
+          .from(messagesTable)
+          .where(eq(messagesTable.group_id, groupId));
+
+        // Get last message time
+        const lastMessage = await db.query.messagesTable.findFirst({
+          where: eq(messagesTable.group_id, groupId),
+          orderBy: [desc(messagesTable.created_at)],
+          columns: { created_at: true },
+        });
+
+        return {
+          id: group.id,
+          name: group.name,
+          description: group.description,
+          ownerId: group.owner_id,
+          isPrivate: group.is_private,
+          createdAt: group.created_at,
+          memberCount: memberResult?.count ?? 0,
+          resourceCount: resourceResult?.count ?? 0,
+          lastActivityAt: lastMessage?.created_at ?? group.created_at,
+        };
+      })
+    );
+
+    return groupsWithStats.filter((g) => g !== null) as NonNullable<typeof groupsWithStats[number]>[];
+  });
+
+const getDiscoverGroupsWithStats = protectedProcedure
+  .output(
+    z.array(
+      z.object({
+        id: z.number(),
+        name: z.string(),
+        description: z.string().nullable(),
+        ownerId: z.number(),
+        isPrivate: z.boolean(),
+        createdAt: dateSchema,
+        memberCount: z.number(),
+        resourceCount: z.number(),
+        lastActivityAt: dateSchema.nullable(),
+      })
+    )
+  )
+  .query(async ({ ctx }) => {
+    const { subject } = ctx;
+    const userId = getUserIdFromSubject(subject);
+
+    // Get user's current memberships
+    const userMemberships = await db.query.membershipsTable.findMany({
+      where: eq(membershipsTable.user_id, userId),
+      columns: { group_id: true },
+    });
+    const userGroupIds = new Set(userMemberships.map((m) => m.group_id));
+
+    // Get all public groups
+    const allPublicGroups = await db.query.groupsTable.findMany({
+      where: eq(groupsTable.is_private, false),
+      orderBy: [desc(groupsTable.created_at)],
+      columns: {
+        id: true,
+        name: true,
+        description: true,
+        owner_id: true,
+        is_private: true,
+        created_at: true,
+      },
+    });
+
+    // Filter out groups user is already in
+    const discoverableGroups = allPublicGroups.filter((g) => !userGroupIds.has(g.id));
+
+    // Get stats for each group
+    const groupsWithStats = await Promise.all(
+      discoverableGroups.map(async (group) => {
+        // Count members
+        const [memberResult] = await db
+          .select({ count: count() })
+          .from(membershipsTable)
+          .where(eq(membershipsTable.group_id, group.id));
+
+        // Count messages/resources
+        const [resourceResult] = await db
+          .select({ count: count() })
+          .from(messagesTable)
+          .where(eq(messagesTable.group_id, group.id));
+
+        // Get last message time
+        const lastMessage = await db.query.messagesTable.findFirst({
+          where: eq(messagesTable.group_id, group.id),
+          orderBy: [desc(messagesTable.created_at)],
+          columns: { created_at: true },
+        });
+
+        return {
+          id: group.id,
+          name: group.name,
+          description: group.description,
+          ownerId: group.owner_id,
+          isPrivate: group.is_private,
+          createdAt: group.created_at,
+          memberCount: memberResult?.count ?? 0,
+          resourceCount: resourceResult?.count ?? 0,
+          lastActivityAt: lastMessage?.created_at ?? group.created_at,
+        };
+      })
+    );
+
+    return groupsWithStats;
+  });
+
 export const groupsApiRouter = createTRPCRouter({
   getAllGroups: getAllGroups,
   getUserGroups: getUserGroups,
@@ -427,4 +601,6 @@ export const groupsApiRouter = createTRPCRouter({
   getGroups: getGroups,
   discoverGroups: discoverGroups,
   joinGroup: joinGroup,
+  getGroupsWithStats: getGroupsWithStats,
+  getDiscoverGroupsWithStats: getDiscoverGroupsWithStats,
 });
