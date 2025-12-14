@@ -142,7 +142,7 @@ export default function DashboardPage() {
     return () => clearInterval(timer);
   }, []);
 
-  const { data: currentUser } = api.users.getCurrentUser.useQuery(undefined, {
+  const { data: currentUser, refetch: refetchUser } = api.users.getCurrentUser.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
   });

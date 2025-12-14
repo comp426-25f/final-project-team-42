@@ -18,7 +18,7 @@ interface Message {
     id: number;
     name: string;
     avatarUrl: string | null;
-  };
+  } | null;
 }
 
 interface MessageBoardProps {
@@ -166,15 +166,15 @@ export function MessageBoard({ groupId }: MessageBoardProps) {
           {messages.map((msg) => (
             <div key={msg.id} className="flex gap-3">
               <Avatar className="h-8 w-8">
-                <AvatarImage src={msg.author.avatarUrl || undefined} />
+                <AvatarImage src={msg.author?.avatarUrl || undefined} />
                 <AvatarFallback>
-                  {msg.author.name.charAt(0).toUpperCase()}
+                  {msg.author?.name?.charAt(0).toUpperCase() || "?"}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <div className="flex items-baseline gap-2">
                   <span className="text-sm font-semibold">
-                    {msg.author.name}
+                    {msg.author?.name || "Unknown User"}
                   </span>
                   <span className="text-muted-foreground text-xs">
                     {new Date(msg.createdAt).toLocaleString()}

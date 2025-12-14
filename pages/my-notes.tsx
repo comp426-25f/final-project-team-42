@@ -117,10 +117,12 @@ export default function MyNotesPage() {
     retry: false,
     refetchOnWindowFocus: false,
   });
-  const { data: userGroupsData = [], refetch: refetchUserGroups } = api.groups.getUserGroups.useQuery();
-  const { data: personalMessages = [], refetch: refetchPersonal } = api.messages.getMessages.useQuery({ groupId: null });
+  const { data: userGroupsDataRaw } = api.groups.getGroups.useQuery();
+  const userGroupsData = useMemo(() => userGroupsDataRaw || [], [userGroupsDataRaw]);
+  const { data: personalMessagesRaw, refetch: refetchPersonal } = api.messages.getMessages.useQuery({ groupId: null });
+  const personalMessages = useMemo(() => personalMessagesRaw || [], [personalMessagesRaw]);
   
-  // Fetch messages for each group - using useQueries would be better but this works
+  // Fetch messages for each group
   const group1Query = api.messages.getMessages.useQuery({ groupId: userGroupsData[0]?.id ?? -1 }, { enabled: !!userGroupsData[0] });
   const group2Query = api.messages.getMessages.useQuery({ groupId: userGroupsData[1]?.id ?? -1 }, { enabled: !!userGroupsData[1] });
   const group3Query = api.messages.getMessages.useQuery({ groupId: userGroupsData[2]?.id ?? -1 }, { enabled: !!userGroupsData[2] });

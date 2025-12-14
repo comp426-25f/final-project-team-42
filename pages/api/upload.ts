@@ -33,14 +33,6 @@ export default async function handler(
   try {
     const { file, fileName, contentType, groupId } = req.body;
 
-    console.log("Upload request received:", {
-      hasFile: !!file,
-      fileName,
-      contentType,
-      groupId,
-      fileLength: file?.length,
-    });
-
     if (!file || !fileName) {
       console.error("Missing required fields:", {
         hasFile: !!file,

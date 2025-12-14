@@ -180,16 +180,16 @@ export function GroupChat({ group, user, authorId }: GroupChatProps) {
     });
 
     // Join event
-    channel.on("presence", { event: "join" }, ({ key }) => {
+    channel.on("presence", { event: "join" }, ({ key }: { key: string }) => {
       setOnlineMembers((prev) => (prev.includes(key) ? prev : [...prev, key]));
     });
 
     // Leave event
-    channel.on("presence", { event: "leave" }, ({ key }) => {
+    channel.on("presence", { event: "leave" }, ({ key }: { key: string }) => {
       setOnlineMembers((prev) => prev.filter((id) => id !== key));
     });
 
-    channel.subscribe(async (status) => {
+    channel.subscribe(async (status: "SUBSCRIBED" | "TIMED_OUT" | "CLOSED" | "CHANNEL_ERROR") => {
       if (status === "SUBSCRIBED") {
         await channel.track({
           user_id: presenceKey, // <- track same ID as string
