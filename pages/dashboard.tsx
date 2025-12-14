@@ -146,8 +146,16 @@ export default function DashboardPage() {
     retry: false,
     refetchOnWindowFocus: false,
   });
-  const { data: groupsData = [], refetch: refetchGroups, error: groupsError } = api.groups.getGroups.useQuery();
-  const { data: discoverGroupsData = [], refetch: refetchDiscoverGroups, error: discoverError } = api.groups.discoverGroups.useQuery();
+  const {
+    data: groupsStatsData = [],
+    refetch: refetchGroups,
+    error: groupsError,
+  } = api.groups.getGroupsWithStats.useQuery();
+  const {
+    data: discoverGroupsStatsData = [],
+    refetch: refetchDiscoverGroups,
+    error: discoverError,
+  } = api.groups.getDiscoverGroupsWithStats.useQuery();
   
   useEffect(() => {
     if (groupsError) console.error("Groups error:", groupsError);
@@ -207,62 +215,29 @@ export default function DashboardPage() {
       "bg-pink-500", "bg-yellow-500", "bg-red-500", "bg-indigo-500",
     ];
     
-    const fetchGroupStats = async () => {
-      if (!groupsData || groupsData.length === 0) {
-        setStudyGroups([]);
-        setLoading(false);
-        return;
-      }
-
-      const groupIds = groupsData.map((g) => g.id);
-
-      // Fetch member counts
-      const { data: memberData } = await supabase
-        .from("memberships")
-        .select("group_id")
-        .in("group_id", groupIds);
-
-      // Fetch message counts and last activity
-      const { data: messageData } = await supabase
-        .from("messages")
-        .select("group_id, created_at")
-        .in("group_id", groupIds)
-        .order("created_at", { ascending: false });
-
-      // Count members per group
-      const memberCounts: Record<number, number> = {};
-      memberData?.forEach((m) => {
-        memberCounts[m.group_id] = (memberCounts[m.group_id] || 0) + 1;
-      });
-
-      // Count messages and get last activity per group
-      const messageCounts: Record<number, number> = {};
-      const lastActivity: Record<number, Date> = {};
-      messageData?.forEach((m) => {
-        messageCounts[m.group_id] = (messageCounts[m.group_id] || 0) + 1;
-        if (!lastActivity[m.group_id]) {
-          lastActivity[m.group_id] = new Date(m.created_at);
-        }
-      });
-
-      const formattedGroups: StudyGroup[] = groupsData.map((group) => ({
-        id: group.id,
-        name: group.name,
-        description: group.description || "",
-        members: memberCounts[group.id] || 0,
-        resources: messageCounts[group.id] || 0,
-        lastActivity: lastActivity[group.id] || new Date(group.createdAt),
-        color: colors[group.id % colors.length],
-        imageUrl: null,
-        owner_id: group.ownerId,
-      }));
-      
-      setStudyGroups(formattedGroups);
+    if (!groupsStatsData || groupsStatsData.length === 0) {
+      setStudyGroups([]);
       setLoading(false);
-    };
+      return;
+    }
 
-    fetchGroupStats();
-  }, [groupsData, supabase]);
+    const formattedGroups: StudyGroup[] = groupsStatsData.map((group, idx) => ({
+      id: group.id,
+      name: group.name,
+      description: group.description || "",
+      members: group.memberCount,
+      resources: group.resourceCount,
+      lastActivity:
+        (group.lastActivityAt && new Date(group.lastActivityAt)) ||
+        new Date(group.createdAt),
+      color: colors[idx % colors.length],
+      imageUrl: null,
+      owner_id: group.ownerId,
+    }));
+
+    setStudyGroups(formattedGroups);
+    setLoading(false);
+  }, [groupsStatsData]);
 
   useEffect(() => {
     const colors = [
@@ -270,60 +245,29 @@ export default function DashboardPage() {
       "bg-pink-500", "bg-yellow-500", "bg-red-500", "bg-indigo-500",
     ];
     
-    const fetchDiscoverStats = async () => {
-      if (!discoverGroupsData || discoverGroupsData.length === 0) {
-        setDiscoverGroups([]);
-        return;
-      }
+    if (!discoverGroupsStatsData || discoverGroupsStatsData.length === 0) {
+      setDiscoverGroups([]);
+      return;
+    }
 
-      const groupIds = discoverGroupsData.map((g) => g.id);
-
-      // Fetch member counts
-      const { data: memberData } = await supabase
-        .from("memberships")
-        .select("group_id")
-        .in("group_id", groupIds);
-
-      // Fetch message counts and last activity
-      const { data: messageData } = await supabase
-        .from("messages")
-        .select("group_id, created_at")
-        .in("group_id", groupIds)
-        .order("created_at", { ascending: false });
-
-      // Count members per group
-      const memberCounts: Record<number, number> = {};
-      memberData?.forEach((m) => {
-        memberCounts[m.group_id] = (memberCounts[m.group_id] || 0) + 1;
-      });
-
-      // Count messages and get last activity per group
-      const messageCounts: Record<number, number> = {};
-      const lastActivity: Record<number, Date> = {};
-      messageData?.forEach((m) => {
-        messageCounts[m.group_id] = (messageCounts[m.group_id] || 0) + 1;
-        if (!lastActivity[m.group_id]) {
-          lastActivity[m.group_id] = new Date(m.created_at);
-        }
-      });
-
-      const formattedGroups: StudyGroup[] = discoverGroupsData.map((group) => ({
+    const formattedGroups: StudyGroup[] = discoverGroupsStatsData.map(
+      (group, idx) => ({
         id: group.id,
         name: group.name,
         description: group.description || "",
-        members: memberCounts[group.id] || 0,
-        resources: messageCounts[group.id] || 0,
-        lastActivity: lastActivity[group.id] || new Date(group.createdAt),
-        color: colors[group.id % colors.length],
+        members: group.memberCount,
+        resources: group.resourceCount,
+        lastActivity:
+          (group.lastActivityAt && new Date(group.lastActivityAt)) ||
+          new Date(group.createdAt),
+        color: colors[idx % colors.length],
         imageUrl: null,
         owner_id: group.ownerId,
-      }));
-      
-      setDiscoverGroups(formattedGroups);
-    };
+      }),
+    );
 
-    fetchDiscoverStats();
-  }, [discoverGroupsData, supabase]);
+    setDiscoverGroups(formattedGroups);
+  }, [discoverGroupsStatsData]);
 
 
 
