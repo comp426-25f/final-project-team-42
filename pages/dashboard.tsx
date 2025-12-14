@@ -142,10 +142,39 @@ export default function DashboardPage() {
     return () => clearInterval(timer);
   }, []);
 
-  const { data: currentUser } = api.users.getCurrentUser.useQuery(undefined, {
+  const { data: currentUser, refetch: refetchUser } = api.users.getCurrentUser.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
   });
+
+  const createUserMutation = api.users.createUser.useMutation({
+    onSuccess: () => {
+      refetchUser();
+    },
+  });
+
+  // Self-healing: if auth user exists but DB user doesn't, create them
+  useEffect(() => {
+    const ensureUserExists = async () => {
+      if (!currentUser && !loading) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          try {
+            await createUserMutation.mutateAsync({
+              id: parseInt(user.id.substring(0, 8), 16),
+              name: user.user_metadata.name || user.email?.split('@')[0] || "User",
+              email: user.email!,
+            });
+          } catch (e) {
+            // Ignore conflict errors if user was just created
+            console.log("Auto-creation attempted:", e);
+          }
+        }
+      }
+    };
+    
+    ensureUserExists();
+  }, [currentUser, loading, supabase]);
   const { data: groupsDataRaw, refetch: refetchGroups, error: groupsError } = api.groups.getGroups.useQuery();
   const groupsData = useMemo(() => groupsDataRaw || [], [groupsDataRaw]);
 

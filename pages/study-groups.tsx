@@ -81,14 +81,12 @@ export default function GroupsPage({ user, authorId }: GroupsPageProps) {
   });
 
   const {
-    data: userGroupsRaw,
+    data: userGroups = [],
     isLoading: isGroupsLoading,
   } = api.groups.getUserGroups.useQuery(undefined, {
     enabled: !!user,
     refetchOnWindowFocus: false,
   });
-
-  const userGroups = useMemo(() => userGroupsRaw || [], [userGroupsRaw]);
 
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
 

@@ -252,7 +252,7 @@ export function GroupChat({ group, user, authorId }: GroupChatProps) {
       setOnlineMembers((prev) => prev.filter((id) => id !== key));
     });
 
-    channel.subscribe(async (status) => {
+    channel.subscribe(async (status: "SUBSCRIBED" | "TIMED_OUT" | "CLOSED" | "CHANNEL_ERROR") => {
       if (status === "SUBSCRIBED") {
         await channel.track({
           user_id: presenceKey, // <- track same ID as string
