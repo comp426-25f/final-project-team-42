@@ -117,7 +117,7 @@ export default function MyNotesPage() {
     retry: false,
     refetchOnWindowFocus: false,
   });
-  const { data: userGroupsData = [] } = api.groups.getGroups.useQuery();
+  const { data: userGroupsData = [], refetch: refetchUserGroups } = api.groups.getUserGroups.useQuery();
   const { data: personalMessages = [], refetch: refetchPersonal } = api.messages.getMessages.useQuery({ groupId: null });
   
   // Fetch messages for each group - using useQueries would be better but this works

@@ -176,6 +176,11 @@ export default function DashboardPage() {
     },
   });
 
+  const userGroupIds = new Set(userGroupsForFilter.map(g => g.id));
+  const discoverGroupsData = allGroupsData
+    .filter(group => !group.isPrivate && !userGroupIds.has(group.id))
+    .slice(0, 20);
+
   useEffect(() => {
     if (currentUser) {
       const userId = currentUser.id;
@@ -388,7 +393,6 @@ export default function DashboardPage() {
         isPrivate: false,
       });
 
-      // Refresh groups list
       refetchGroups();
 
       setIsCreateGroupOpen(false);
@@ -426,8 +430,13 @@ export default function DashboardPage() {
         if (error?.data?.code === "BAD_REQUEST") {
           alert("You are already a member of this group!");
         } else {
-          alert("Group not found. Please check the group ID.");
+          alert("Failed to join group. Please check the group ID.");
         }
+      } else {
+        alert("Successfully joined the group!");
+        refetchGroups();
+        fetchRecentActivities();
+        fetchTotalResources();
       }
 
       setIsJoinGroupOpen(false);
