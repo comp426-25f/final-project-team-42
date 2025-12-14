@@ -156,10 +156,6 @@ export default function SettingsPage() {
         data: { publicUrl },
       } = supabase.storage.from("group-files").getPublicUrl(uploadData.path);
 
-      console.log("Avatar uploaded successfully:", {
-        path: uploadData.path,
-        publicUrl,
-      });
       return publicUrl;
     } catch (error) {
       console.error("Error uploading avatar:", error);
@@ -210,7 +206,6 @@ export default function SettingsPage() {
       setSelectedFile(null);
       setPreviewUrl(null);
       setSuccess("Profile updated successfully!");
-      console.log("Profile saved with avatar URL:", newAvatarUrl);
 
       setTimeout(() => setSuccess(""), 3000);
     } catch (error: unknown) {

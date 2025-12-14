@@ -42,13 +42,6 @@ type RawMessageRow = {
   author: { name: string | null; avatar_url: string | null }[] | null;
 };
 
-type RawMembershipRow = {
-  user_id: string | number;
-  users:
-    | { id: string; name: string; avatar_url: string | null }
-    | { id: string; name: string; avatar_url: string | null }[];
-};
-
 const PAGE_SIZE = 20;
 
 const uploadPostFileToSupabase = async (
@@ -211,48 +204,23 @@ export function GroupChat({ group, user, authorId }: GroupChatProps) {
     }
   };
 
+  const { data: membersData } = api.memberships.getMembershipsForGroup.useQuery(
+    { groupId: group.id },
+    { enabled: !!group.id }
+  );
+
   useEffect(() => {
-    const loadMembers = async () => {
-      const { data, error } = await supabase
-        .from("memberships")
-        .select(
-          `
-        user_id,
-        users (
-          id,
-          name,
-          avatar_url
-        )
-      `,
-        )
-        .eq("group_id", group.id);
-
-      if (error) {
-        console.error("Error loading group members:", error);
-        return;
-      }
-
-      const members = (data ?? [])
-        .map((row: RawMembershipRow) => {
-          const userRow = Array.isArray(row.users) ? row.users[0] : row.users;
-          if (!userRow) return null;
-
-          return {
-            id: String(userRow.id), // <- normalize to string
-            name: userRow.name,
-            avatar_url: userRow.avatar_url,
-          };
-        })
-        .filter(
-          (m): m is { id: string; name: string; avatar_url: string | null } =>
-            m !== null,
-        );
-
+    if (membersData) {
+      const members = membersData
+        .filter((m) => m.user)
+        .map((m) => ({
+          id: String(m.user!.id),
+          name: m.user!.name || "Unknown",
+          avatar_url: m.user!.avatarUrl || null,
+        }));
       setGroupMembers(members);
-    };
-
-    loadMembers();
-  }, [group.id, supabase]);
+    }
+  }, [membersData]);
 
   useEffect(() => {
     if (authorId == null) return;

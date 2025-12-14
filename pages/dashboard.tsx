@@ -148,6 +148,20 @@ export default function DashboardPage() {
   });
   const { data: groupsData = [], refetch: refetchGroups, error: groupsError } = api.groups.getGroups.useQuery();
   const { data: discoverGroupsData = [], refetch: refetchDiscoverGroups, error: discoverError } = api.groups.discoverGroups.useQuery();
+
+  // Get member counts for user's groups via tRPC
+  const userGroupIds = groupsData.map((g) => g.id);
+  const { data: userGroupMemberCounts = {} } = api.memberships.getMemberCountsForGroups.useQuery(
+    { groupIds: userGroupIds },
+    { enabled: userGroupIds.length > 0 }
+  );
+
+  // Get member counts for discover groups via tRPC
+  const discoverGroupIds = discoverGroupsData.map((g) => g.id);
+  const { data: discoverGroupMemberCounts = {} } = api.memberships.getMemberCountsForGroups.useQuery(
+    { groupIds: discoverGroupIds },
+    { enabled: discoverGroupIds.length > 0 }
+  );
   
   useEffect(() => {
     if (groupsError) console.error("Groups error:", groupsError);
@@ -206,7 +220,7 @@ export default function DashboardPage() {
       "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500",
       "bg-pink-500", "bg-yellow-500", "bg-red-500", "bg-indigo-500",
     ];
-    
+
     const fetchGroupStats = async () => {
       if (!groupsData || groupsData.length === 0) {
         setStudyGroups([]);
@@ -216,24 +230,12 @@ export default function DashboardPage() {
 
       const groupIds = groupsData.map((g) => g.id);
 
-      // Fetch member counts
-      const { data: memberData } = await supabase
-        .from("memberships")
-        .select("group_id")
-        .in("group_id", groupIds);
-
-      // Fetch message counts and last activity
+      // Fetch message counts and last activity (still using Supabase for messages)
       const { data: messageData } = await supabase
         .from("messages")
         .select("group_id, created_at")
         .in("group_id", groupIds)
         .order("created_at", { ascending: false });
-
-      // Count members per group
-      const memberCounts: Record<number, number> = {};
-      memberData?.forEach((m) => {
-        memberCounts[m.group_id] = (memberCounts[m.group_id] || 0) + 1;
-      });
 
       // Count messages and get last activity per group
       const messageCounts: Record<number, number> = {};
@@ -249,27 +251,27 @@ export default function DashboardPage() {
         id: group.id,
         name: group.name,
         description: group.description || "",
-        members: memberCounts[group.id] || 0,
+        members: userGroupMemberCounts[String(group.id)] || 0,
         resources: messageCounts[group.id] || 0,
         lastActivity: lastActivity[group.id] || new Date(group.createdAt),
         color: colors[group.id % colors.length],
         imageUrl: null,
         owner_id: group.ownerId,
       }));
-      
+
       setStudyGroups(formattedGroups);
       setLoading(false);
     };
 
     fetchGroupStats();
-  }, [groupsData, supabase]);
+  }, [groupsData, supabase, userGroupMemberCounts]);
 
   useEffect(() => {
     const colors = [
       "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500",
       "bg-pink-500", "bg-yellow-500", "bg-red-500", "bg-indigo-500",
     ];
-    
+
     const fetchDiscoverStats = async () => {
       if (!discoverGroupsData || discoverGroupsData.length === 0) {
         setDiscoverGroups([]);
@@ -278,24 +280,12 @@ export default function DashboardPage() {
 
       const groupIds = discoverGroupsData.map((g) => g.id);
 
-      // Fetch member counts
-      const { data: memberData } = await supabase
-        .from("memberships")
-        .select("group_id")
-        .in("group_id", groupIds);
-
-      // Fetch message counts and last activity
+      // Fetch message counts and last activity (still using Supabase for messages)
       const { data: messageData } = await supabase
         .from("messages")
         .select("group_id, created_at")
         .in("group_id", groupIds)
         .order("created_at", { ascending: false });
-
-      // Count members per group
-      const memberCounts: Record<number, number> = {};
-      memberData?.forEach((m) => {
-        memberCounts[m.group_id] = (memberCounts[m.group_id] || 0) + 1;
-      });
 
       // Count messages and get last activity per group
       const messageCounts: Record<number, number> = {};
@@ -311,19 +301,19 @@ export default function DashboardPage() {
         id: group.id,
         name: group.name,
         description: group.description || "",
-        members: memberCounts[group.id] || 0,
+        members: discoverGroupMemberCounts[String(group.id)] || 0,
         resources: messageCounts[group.id] || 0,
         lastActivity: lastActivity[group.id] || new Date(group.createdAt),
         color: colors[group.id % colors.length],
         imageUrl: null,
         owner_id: group.ownerId,
       }));
-      
+
       setDiscoverGroups(formattedGroups);
     };
 
     fetchDiscoverStats();
-  }, [discoverGroupsData, supabase]);
+  }, [discoverGroupsData, supabase, discoverGroupMemberCounts]);
 
 
 

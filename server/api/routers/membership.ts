@@ -319,10 +319,36 @@ const removeMember = protectedProcedure
       );
   });
 
+const getMemberCountsForGroups = protectedProcedure
+  .input(z.object({ groupIds: z.array(z.number()) }))
+  .output(z.record(z.string(), z.number()))
+  .query(async ({ input }) => {
+    const { groupIds } = input;
+
+    if (groupIds.length === 0) {
+      return {};
+    }
+
+    const memberships = await db.query.membershipsTable.findMany({
+      where: (membershipsTable, { inArray }) =>
+        inArray(membershipsTable.group_id, groupIds),
+      columns: { group_id: true },
+    });
+
+    const counts: Record<string, number> = {};
+    for (const m of memberships) {
+      const key = String(m.group_id);
+      counts[key] = (counts[key] || 0) + 1;
+    }
+
+    return counts;
+  });
+
 export const membershipsApiRouter = createTRPCRouter({
   getMembershipsForGroup,
   getMyMembershipForGroup,
   getMyMemberships,
+  getMemberCountsForGroups,
   joinGroup,
   leaveGroup,
   setMemberRole,

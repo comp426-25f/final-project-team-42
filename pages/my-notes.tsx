@@ -311,7 +311,6 @@ export default function MyNotesPage() {
       }
 
       const data = await response.json();
-      console.log("Upload successful:", data);
       return data.url;
     } catch (error) {
       console.error("Upload error:", error);
