@@ -33,6 +33,15 @@ export type GroupMessage = {
   } | null;
 };
 
+type RawMessageRow = {
+  id: number;
+  message: string;
+  attachment_url: string | null;
+  created_at: string;
+  author_id: number | null;
+  author: { name: string | null; avatar_url: string | null }[] | null;
+};
+
 const PAGE_SIZE = 20;
 
 const uploadPostFileToSupabase = async (
@@ -72,8 +81,8 @@ export function GroupChat({ group, user, authorId }: GroupChatProps) {
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [cursor, setCursor] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
 
   const [groupMembers, setGroupMembers] = useState<
     { id: string; name: string; avatar_url: string | null }[]
@@ -82,82 +91,136 @@ export function GroupChat({ group, user, authorId }: GroupChatProps) {
 
   const messageEndRef = useRef<HTMLDivElement | null>(null);
 
-  const {
-    data: messagesData = [],
-    isLoading: isLoadingMessagesQuery,
-    isFetching: isFetchingMessagesQuery,
-    refetch: refetchMessages,
-  } = api.messages.getMessages.useQuery({ groupId: group.id });
-
-  const { data: membershipsData = [] } =
-    api.memberships.getMembershipsForGroup.useQuery({ groupId: group.id });
-
   const refreshMessages = async () => {
-    await refetchMessages();
+    setLoadingMessages(true);
+    try {
+      const { data, error } = await supabase
+        .from("messages")
+        .select(
+          `
+          id,
+          message,
+          attachment_url,
+          created_at,
+          author_id,
+          author:users!messages_author_id_fkey(
+            name,
+            avatar_url
+          )
+        `,
+        )
+        .eq("group_id", group.id)
+        .order("created_at", { ascending: false })
+        .range(0, PAGE_SIZE - 1);
+
+      if (error) throw error;
+
+      const transformedData = (data ?? []).map((msg: RawMessageRow) => {
+        const author = Array.isArray(msg.author)
+          ? msg.author[0] || null
+          : msg.author || null;
+
+        return {
+          id: msg.id,
+          message: msg.message,
+          attachment_url: msg.attachment_url,
+          created_at: msg.created_at,
+          author_id: msg.author_id,
+          author: author
+            ? {
+                name: author.name || "Anonymous",
+                avatar_url: author.avatar_url,
+              }
+            : null,
+        } as GroupMessage;
+      });
+
+      setMessages(transformedData);
+      setCursor(transformedData.length);
+      setHasMore(transformedData.length === PAGE_SIZE);
+
+      // Auto-scroll to bottom
+      setTimeout(() => messageEndRef.current?.scrollIntoView(), 0);
+    } catch (err) {
+      console.error("Error loading messages:", err);
+    } finally {
+      setLoadingMessages(false);
+    }
   };
 
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [group.id]);
-
-  useEffect(() => {
-    setLoadingMessages(isLoadingMessagesQuery || isFetchingMessagesQuery);
-  }, [isLoadingMessagesQuery, isFetchingMessagesQuery]);
-
-  useEffect(() => {
-    const sorted = [...(messagesData ?? [])].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
-
-    setHasMore(sorted.length > visibleCount);
-
-    const subset = sorted
-      .slice(0, visibleCount)
-      .map((msg) => ({
-        id: msg.id,
-        message: msg.message ?? "",
-        attachment_url: msg.attachmentUrl,
-        created_at: new Date(msg.createdAt).toISOString(),
-        author_id: msg.authorId ?? null,
-        author: msg.author
-          ? {
-              name: msg.author.name || "Anonymous",
-              avatar_url: msg.author.avatarUrl ?? null,
-            }
-          : null,
-      }));
-
-    setMessages(subset);
-  }, [messagesData, visibleCount]);
-
-  useEffect(() => {
-    const members =
-      membershipsData
-        ?.map((m) => m.user)
-        .filter((user): user is NonNullable<typeof user> => !!user)
-        .map((user) => ({
-          id: String(user.id),
-          name: user.name,
-          avatar_url: user.avatarUrl ?? null,
-        })) ?? [];
-
-    setGroupMembers(members);
-  }, [membershipsData]);
-
-  useEffect(() => {
-    if (!loadingMessages) {
-      setTimeout(() => messageEndRef.current?.scrollIntoView(), 0);
-    }
-  }, [messages, loadingMessages]);
-
-  const loadMoreMessages = () => {
+  const loadMoreMessages = async () => {
     if (!hasMore || loadingMore) return;
 
     setLoadingMore(true);
-    setVisibleCount((prev) => prev + PAGE_SIZE);
-    setTimeout(() => setLoadingMore(false), 0);
+    try {
+      const { data, error } = await supabase
+        .from("messages")
+        .select(
+          `
+          id,
+          message,
+          attachment_url,
+          created_at,
+          author_id,
+          author:users!messages_author_id_fkey(
+            name,
+            avatar_url
+          )
+        `,
+        )
+        .eq("group_id", group.id)
+        .order("created_at", { ascending: false })
+        .range(cursor, cursor + PAGE_SIZE - 1);
+
+      if (error) throw error;
+
+      const newMessages = (data ?? []).map((msg: RawMessageRow) => {
+        const author = Array.isArray(msg.author)
+          ? msg.author[0] || null
+          : msg.author || null;
+
+        return {
+          id: msg.id,
+          message: msg.message,
+          attachment_url: msg.attachment_url,
+          created_at: msg.created_at,
+          author_id: msg.author_id,
+          author: author
+            ? {
+                name: author.name || "Anonymous",
+                avatar_url: author.avatar_url,
+              }
+            : null,
+        } as GroupMessage;
+      });
+
+      setMessages((prev) => [...prev, ...newMessages]);
+      setCursor((prev) => prev + newMessages.length);
+      if (newMessages.length < PAGE_SIZE) setHasMore(false);
+    } catch (err) {
+      console.error("Error loading more messages:", err);
+    } finally {
+      setLoadingMore(false);
+    }
   };
+
+  const { data: membersData } = api.memberships.getMembershipsForGroup.useQuery(
+    { groupId: group.id },
+    { enabled: !!group.id }
+  );
+
+  useEffect(() => {
+    if (membersData) {
+      const members = membersData
+        .filter((m) => m.user)
+        .map((m) => ({
+          id: String(m.user!.id),
+          name: m.user!.name || "Unknown",
+          avatar_url: m.user!.avatarUrl || null,
+        }));
+      setGroupMembers(members);
+    }
+  }, [membersData]);
 
   useEffect(() => {
     if (authorId == null) return;
