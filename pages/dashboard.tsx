@@ -146,56 +146,16 @@ export default function DashboardPage() {
     retry: false,
     refetchOnWindowFocus: false,
   });
-
-  const createUserMutation = api.users.createUser.useMutation({
-    onSuccess: () => {
-      refetchUser();
-    },
-  });
-
-  // Self-healing: if auth user exists but DB user doesn't, create them
-  useEffect(() => {
-    const ensureUserExists = async () => {
-      if (!currentUser && !loading) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          try {
-            await createUserMutation.mutateAsync({
-              id: parseInt(user.id.substring(0, 8), 16),
-              name: user.user_metadata.name || user.email?.split('@')[0] || "User",
-              email: user.email!,
-            });
-          } catch (e) {
-            // Ignore conflict errors if user was just created
-            console.log("Auto-creation attempted:", e);
-          }
-        }
-      }
-    };
-    
-    ensureUserExists();
-  }, [currentUser, loading, supabase]);
-  const { data: groupsDataRaw, refetch: refetchGroups, error: groupsError } = api.groups.getGroups.useQuery();
-  const groupsData = useMemo(() => groupsDataRaw || [], [groupsDataRaw]);
-
-  const { data: discoverGroupsDataRaw, refetch: refetchDiscoverGroups, error: discoverError } = api.groups.discoverGroups.useQuery();
-  const discoverGroupsData = useMemo(() => discoverGroupsDataRaw || [], [discoverGroupsDataRaw]);
-
-  // Get member counts for user's groups via tRPC
-  const userGroupIds = useMemo(() => groupsData.map((g) => g.id), [groupsData]);
-  const { data: userGroupMemberCountsRaw } = api.memberships.getMemberCountsForGroups.useQuery(
-    { groupIds: userGroupIds },
-    { enabled: userGroupIds.length > 0 }
-  );
-  const userGroupMemberCounts = useMemo(() => userGroupMemberCountsRaw || {}, [userGroupMemberCountsRaw]);
-
-  // Get member counts for discover groups via tRPC
-  const discoverGroupIds = useMemo(() => discoverGroupsData.map((g) => g.id), [discoverGroupsData]);
-  const { data: discoverGroupMemberCountsRaw } = api.memberships.getMemberCountsForGroups.useQuery(
-    { groupIds: discoverGroupIds },
-    { enabled: discoverGroupIds.length > 0 }
-  );
-  const discoverGroupMemberCounts = useMemo(() => discoverGroupMemberCountsRaw || {}, [discoverGroupMemberCountsRaw]);
+  const {
+    data: groupsStatsData = [],
+    refetch: refetchGroups,
+    error: groupsError,
+  } = api.groups.getGroupsWithStats.useQuery();
+  const {
+    data: discoverGroupsStatsData = [],
+    refetch: refetchDiscoverGroups,
+    error: discoverError,
+  } = api.groups.getDiscoverGroupsWithStats.useQuery();
   
   useEffect(() => {
     if (groupsError) console.error("Groups error:", groupsError);
@@ -254,100 +214,60 @@ export default function DashboardPage() {
       "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500",
       "bg-pink-500", "bg-yellow-500", "bg-red-500", "bg-indigo-500",
     ];
-
-    const fetchGroupStats = async () => {
-      if (!groupsData || groupsData.length === 0) {
-        setStudyGroups([]);
-        setLoading(false);
-        return;
-      }
-
-      const groupIds = groupsData.map((g) => g.id);
-
-      // Fetch message counts and last activity (still using Supabase for messages)
-      const { data: messageData } = await supabase
-        .from("messages")
-        .select("group_id, created_at")
-        .in("group_id", groupIds)
-        .order("created_at", { ascending: false });
-
-      // Count messages and get last activity per group
-      const messageCounts: Record<number, number> = {};
-      const lastActivity: Record<number, Date> = {};
-      messageData?.forEach((m) => {
-        messageCounts[m.group_id] = (messageCounts[m.group_id] || 0) + 1;
-        if (!lastActivity[m.group_id]) {
-          lastActivity[m.group_id] = new Date(m.created_at);
-        }
-      });
-
-      const formattedGroups: StudyGroup[] = groupsData.map((group) => ({
-        id: group.id,
-        name: group.name,
-        description: group.description || "",
-        members: userGroupMemberCounts[String(group.id)] || 0,
-        resources: messageCounts[group.id] || 0,
-        lastActivity: lastActivity[group.id] || new Date(group.createdAt),
-        color: colors[group.id % colors.length],
-        imageUrl: null,
-        owner_id: group.ownerId,
-      }));
-
-      setStudyGroups(formattedGroups);
+    
+    if (!groupsStatsData || groupsStatsData.length === 0) {
+      setStudyGroups([]);
       setLoading(false);
-    };
+      return;
+    }
 
-    fetchGroupStats();
-  }, [groupsData, supabase, userGroupMemberCounts]);
+    const formattedGroups: StudyGroup[] = groupsStatsData.map((group, idx) => ({
+      id: group.id,
+      name: group.name,
+      description: group.description || "",
+      members: group.memberCount,
+      resources: group.resourceCount,
+      lastActivity:
+        (group.lastActivityAt && new Date(group.lastActivityAt)) ||
+        new Date(group.createdAt),
+      color: colors[idx % colors.length],
+      imageUrl: null,
+      owner_id: group.ownerId,
+    }));
+
+    setStudyGroups(formattedGroups);
+    setLoading(false);
+  }, [groupsStatsData]);
 
   useEffect(() => {
     const colors = [
       "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500",
       "bg-pink-500", "bg-yellow-500", "bg-red-500", "bg-indigo-500",
     ];
+    
+    if (!discoverGroupsStatsData || discoverGroupsStatsData.length === 0) {
+      setDiscoverGroups([]);
+      return;
+    }
 
-    const fetchDiscoverStats = async () => {
-      if (!discoverGroupsData || discoverGroupsData.length === 0) {
-        setDiscoverGroups([]);
-        return;
-      }
-
-      const groupIds = discoverGroupsData.map((g) => g.id);
-
-      // Fetch message counts and last activity (still using Supabase for messages)
-      const { data: messageData } = await supabase
-        .from("messages")
-        .select("group_id, created_at")
-        .in("group_id", groupIds)
-        .order("created_at", { ascending: false });
-
-      // Count messages and get last activity per group
-      const messageCounts: Record<number, number> = {};
-      const lastActivity: Record<number, Date> = {};
-      messageData?.forEach((m) => {
-        messageCounts[m.group_id] = (messageCounts[m.group_id] || 0) + 1;
-        if (!lastActivity[m.group_id]) {
-          lastActivity[m.group_id] = new Date(m.created_at);
-        }
-      });
-
-      const formattedGroups: StudyGroup[] = discoverGroupsData.map((group) => ({
+    const formattedGroups: StudyGroup[] = discoverGroupsStatsData.map(
+      (group, idx) => ({
         id: group.id,
         name: group.name,
         description: group.description || "",
-        members: discoverGroupMemberCounts[String(group.id)] || 0,
-        resources: messageCounts[group.id] || 0,
-        lastActivity: lastActivity[group.id] || new Date(group.createdAt),
-        color: colors[group.id % colors.length],
+        members: group.memberCount,
+        resources: group.resourceCount,
+        lastActivity:
+          (group.lastActivityAt && new Date(group.lastActivityAt)) ||
+          new Date(group.createdAt),
+        color: colors[idx % colors.length],
         imageUrl: null,
         owner_id: group.ownerId,
-      }));
+      }),
+    );
 
-      setDiscoverGroups(formattedGroups);
-    };
-
-    fetchDiscoverStats();
-  }, [discoverGroupsData, supabase, discoverGroupMemberCounts]);
+    setDiscoverGroups(formattedGroups);
+  }, [discoverGroupsStatsData]);
 
 
 

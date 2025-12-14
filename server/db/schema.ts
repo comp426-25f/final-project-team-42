@@ -15,15 +15,15 @@ import {
   pgTable,
   text,
   timestamp,
-  integer,
   boolean,
-  serial,
+  bigserial,
+  bigint,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 /** Users table */
 export const usersTable = pgTable("users", {
-  id: serial("id").primaryKey(),
+  id: bigserial("id", { mode: "number" }).primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   avatar_url: text("avatar_url"),
@@ -32,10 +32,10 @@ export const usersTable = pgTable("users", {
 
 /** Groups table */
 export const groupsTable = pgTable("groups", {
-  id: serial("id").primaryKey(),
+  id: bigserial("id", { mode: "number" }).primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  owner_id: integer("owner_id")
+  owner_id: bigint("owner_id", { mode: "number" })
     .notNull()
     .references(() => usersTable.id),
   is_private: boolean("is_private").default(false).notNull(),
@@ -44,11 +44,11 @@ export const groupsTable = pgTable("groups", {
 
 /** Memberships table (many-to-many relationship between users and groups) */
 export const membershipsTable = pgTable("memberships", {
-  id: serial("id").primaryKey(),
-  user_id: integer("user_id")
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  user_id: bigint("user_id", { mode: "number" })
     .notNull()
     .references(() => usersTable.id),
-  group_id: integer("group_id")
+  group_id: bigint("group_id", { mode: "number" })
     .notNull()
     .references(() => groupsTable.id),
   role: text("role").default("member").notNull(),
@@ -57,9 +57,9 @@ export const membershipsTable = pgTable("memberships", {
 
 /** Messages table (for notes board with file attachments) */
 export const messagesTable = pgTable("messages", {
-  id: serial("id").primaryKey(),
-  group_id: integer("group_id").references(() => groupsTable.id), // Nullable for personal notes
-  author_id: integer("author_id")
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  group_id: bigint("group_id", { mode: "number" }).references(() => groupsTable.id), // Nullable for personal notes
+  author_id: bigint("author_id", { mode: "number" })
     .notNull()
     .references(() => usersTable.id),
   message: text("message"),
