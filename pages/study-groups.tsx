@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { GetServerSideProps } from "next";
+import { useEffect, useMemo, useState } from "react";
+import type { GetServerSideProps } from "next";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import { api } from "@/utils/trpc/api";
@@ -48,31 +48,15 @@ import type { Subject } from "@/server/models/auth";
 import { GroupChat, GroupChatGroup } from "@/components/group-chat";
 import { ModeToggle } from "@/components/theme/mode-toggle";
 
-type Group = {
-  id: number;
-  name: string;
-  description: string | null;
-  owner_id: number | null;
-  is_private: boolean | null;
-  join_code: string | null;
-  created_at: string;
-};
-
 type GroupsPageProps = {
   user: Subject | null;
-  authorId: number | null;
-  userGroups: Group[];
 };
 
-export default function GroupsPage({
-  user,
-  authorId,
-  userGroups,
-}: GroupsPageProps) {
+export default function GroupsPage({ user }: GroupsPageProps) {
   const supabase = createSupabaseComponentClient();
   const router = useRouter();
+  const utils = api.useUtils();
 
-  const [groups, setGroups] = useState<Group[]>([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
@@ -80,139 +64,127 @@ export default function GroupsPage({
   const [course, setCourse] = useState("");
   const [description, setDescription] = useState("");
   const [groupImage, setGroupImage] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [isJoinGroupOpen, setIsJoinGroupOpen] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
+
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [userName, setUserName] = useState("User");
   const [userEmail, setUserEmail] = useState("");
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
 
-  const [isJoinGroupOpen, setIsJoinGroupOpen] = useState(false);
-  const [joinCode, setJoinCode] = useState("");
-  const [isJoining, setIsJoining] = useState(false);
-
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(
-    userGroups.length > 0 ? userGroups[0].id : null,
-  );
-
-  const selectedGroup: Group | null =
-    userGroups.find((g) => g.id === selectedGroupId) ??
-    groups.find((g) => g.id === selectedGroupId) ??
-    null;
   const { data: currentUser } = api.users.getCurrentUser.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
   });
 
-  const handleSelectGroup = (group: Group) => {
-    setSelectedGroupId(group.id);
-  };
+  const {
+    data: userGroups = [],
+    isLoading: isGroupsLoading,
+  } = api.groups.getUserGroups.useQuery(undefined, {
+    enabled: !!user,
+    refetchOnWindowFocus: false,
+  });
 
-  const fetchUser = async () => {
-  try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
 
-    if (!user) {
-      setUserName("Guest");
-      setUserEmail("");
-      setUserAvatarUrl(null);
-      return;
-    }
-
-    setUserEmail(user.email || "");
-  } catch (error) {
-    console.error("Error fetching user:", error);
-  }
-};
-
-  // initial load + keep user info fresh on route/visibility/focus
   useEffect(() => {
-    fetchUser();
+    if (selectedGroupId == null && userGroups.length > 0) {
+      setSelectedGroupId(userGroups[0].id);
+    }
+  }, [selectedGroupId, userGroups]);
 
-    const handleRouteChange = () => {
-      fetchUser();
-    };
+  const selectedGroup = useMemo(() => {
+    if (selectedGroupId == null) return null;
+    return userGroups.find((g) => g.id === selectedGroupId) ?? null;
+  }, [selectedGroupId, userGroups]);
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        fetchUser();
+  const handleSelectGroup = (groupId: number) => setSelectedGroupId(groupId);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser();
+
+        if (!authUser) {
+          setUserName("Guest");
+          setUserEmail("");
+          setUserAvatarUrl(null);
+          return;
+        }
+
+        setUserEmail(authUser.email || "");
+      } catch (error) {
+        console.error("Error fetching user:", error);
       }
     };
 
-    const handleFocus = () => {
-      fetchUser();
+    fetchUser();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") fetchUser();
     };
 
-    router.events.on("routeChangeComplete", handleRouteChange);
+    const handleFocus = () => fetchUser();
+
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("focus", handleFocus);
 
     return () => {
-      router.events.off("routeChangeComplete", handleRouteChange);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("focus", handleFocus);
     };
-  }, [router, supabase]);
+  }, [supabase]);
 
   useEffect(() => {
-  if (currentUser) {
+    if (!currentUser) return;
+
     setUserName(currentUser.name);
+
     if (currentUser.avatarUrl) {
       if (currentUser.avatarUrl.startsWith("http")) {
         setUserAvatarUrl(currentUser.avatarUrl);
       } else {
         const {
           data: { publicUrl },
-        } = supabase.storage
-          .from("group-files")
-          .getPublicUrl(currentUser.avatarUrl);
+        } = supabase.storage.from("group-files").getPublicUrl(currentUser.avatarUrl);
         setUserAvatarUrl(publicUrl);
       }
     } else {
       setUserAvatarUrl(null);
     }
-  }
-}, [currentUser, supabase]);
+  }, [currentUser, supabase]);
 
-  const fetchGroups = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("groups")
-        .select("*")
-        .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setGroups((data ?? []) as Group[]);
-    } catch (err) {
-      console.error("Error loading groups:", err);
-    }
-  };
+  const createGroupMutation = api.groups.createGroup.useMutation({
+    onSuccess: async (created) => {
+      await utils.groups.getUserGroups.invalidate();
 
-  useEffect(() => {
-    fetchGroups();
+      setSelectedGroupId(created.id);
+      setIsCreateGroupOpen(false);
 
-    // realtime updates when new groups are created
-    const channel = supabase
-      .channel("groups-table-changes")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "groups" },
-        (payload) => {
-          const newGroup = payload.new as Group;
-          setGroups((prev) => {
-            const exists = prev.some((g) => g.id === newGroup.id);
-            return exists ? prev : [newGroup, ...prev];
-          });
-        },
-      )
-      .subscribe();
+      setGroupName("");
+      setCourse("");
+      setDescription("");
+      setGroupImage(null);
+      setErrorMessage(null);
+    },
+    onError: (err) => setErrorMessage(err.message),
+  });
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+  const joinByCodeMutation = api.memberships.joinGroup.useMutation({
+    onSuccess: async ({ groupId }) => {
+      await utils.groups.getUserGroups.invalidate();
+      setSelectedGroupId(groupId);
+
+      setJoinCode("");
+      setIsJoinGroupOpen(false);
+      setErrorMessage(null);
+    },
+    onError: (err) => setErrorMessage(err.message),
   });
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -220,127 +192,42 @@ export default function GroupsPage({
     setGroupImage(file);
   };
 
-  const handleCreateGroup = async () => {
+  const handleCreateGroup = () => {
     setErrorMessage(null);
 
     if (!groupName.trim() || !course.trim()) {
       setErrorMessage("Please provide both a group name and course.");
       return;
     }
-
-    if (!authorId) {
+    if (!user) {
       setErrorMessage("You must be logged in to create a group.");
       return;
     }
 
-    setIsSubmitting(true);
-
-    try {
-      const joinCode = Math.random().toString(36).slice(2, 8).toUpperCase();
-
-      // Note: groupImage is collected but not yet uploaded; that can be added later.
-      const { data: newGroup, error: groupError } = await supabase
-        .from("groups")
-        .insert({
-          name: `${course} - ${groupName}`,
-          description,
-          owner_id: authorId,
-          is_private: false,
-          join_code: joinCode,
-        })
-        .select()
-        .single();
-
-      if (groupError) throw groupError;
-
-      if (newGroup) {
-        // Add creator as member
-        const { error: membershipError } = await supabase
-          .from("memberships")
-          .insert({
-            group_id: newGroup.id,
-            user_id: authorId,
-          });
-
-        if (membershipError) {
-          console.error("Error creating membership:", membershipError);
-        }
-
-        setGroups((prev) => [newGroup as Group, ...prev]);
-        setSelectedGroupId(newGroup.id);
-      }
-
-      // reset and close dialog
-      setGroupName("");
-      setCourse("");
-      setDescription("");
-      setGroupImage(null);
-      setIsCreateGroupOpen(false);
-    } finally {
-      setIsSubmitting(false);
-    }
+    createGroupMutation.mutate({
+      name: `${course} - ${groupName}`,
+      description: description || null,
+      isPrivate: false,
+    });
   };
 
-  const handleJoinGroup = async () => {
+  const handleJoinGroup = () => {
     setErrorMessage(null);
 
     if (!joinCode.trim()) {
       setErrorMessage("Enter a join code.");
       return;
     }
-    if (!authorId) {
+    if (!user) {
       setErrorMessage("You must be logged in to join a group.");
       return;
     }
 
-    setIsJoining(true);
-
-    try {
-      const { data: group, error: groupError } = await supabase
-        .from("groups")
-        .select("*")
-        .eq("join_code", joinCode.trim().toUpperCase())
-        .maybeSingle();
-
-      if (groupError) throw groupError;
-      if (!group) {
-        setErrorMessage("No group found with that join code.");
-        return;
-      }
-
-      // ensure membership exists
-      const { data: existingMembership } = await supabase
-        .from("memberships")
-        .select("*")
-        .eq("group_id", group.id)
-        .eq("user_id", authorId)
-        .maybeSingle();
-
-      if (!existingMembership) {
-        const { error: membershipError } = await supabase
-          .from("memberships")
-          .insert({
-            group_id: group.id,
-            user_id: authorId,
-          });
-
-        if (membershipError) {
-          console.error("Error joining group:", membershipError);
-        }
-      }
-
-      setGroups((prev) => {
-        const exists = prev.some((g) => g.id === group.id);
-        return exists ? prev : [group as Group, ...prev];
-      });
-      setSelectedGroupId(group.id);
-
-      setJoinCode("");
-      setIsJoinGroupOpen(false);
-    } finally {
-      setIsJoining(false);
-    }
+    joinByCodeMutation.mutate({ joinCode: joinCode.trim().toUpperCase() });
   };
+
+  const isSubmitting = createGroupMutation.isPending;
+  const isJoining = joinByCodeMutation.isPending;
 
   return (
     <>
@@ -351,12 +238,14 @@ export default function GroupsPage({
           content="Join real-time discussions with your study groups. Collaborate with classmates and share resources on StudyBuddy."
         />
       </Head>
+
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:bg-blue-600 focus:px-4 focus:py-2 focus:text-white"
       >
         Skip to main content
       </a>
+
       <div className="bg-background flex min-h-screen">
         {/* Sidebar */}
         <aside
@@ -418,10 +307,7 @@ export default function GroupsPage({
                           className="text-foreground hover:bg-accent flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors"
                           aria-label="Navigate to Dashboard"
                         >
-                          <Home
-                            className="h-5 w-5 flex-shrink-0"
-                            aria-hidden="true"
-                          />
+                          <Home className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
                           <span>Dashboard</span>
                         </button>
                       </li>
@@ -432,24 +318,17 @@ export default function GroupsPage({
                           aria-label="Group Chats"
                           aria-current="page"
                         >
-                          <Users
-                            className="h-5 w-5 flex-shrink-0"
-                            aria-hidden="true"
-                          />
+                          <Users className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
                           <span>Group Chats</span>
                         </button>
                       </li>
-
                       <li>
                         <button
                           onClick={() => router.push("/my-notes")}
                           className="text-foreground hover:bg-accent flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors"
                           aria-label="Navigate to My Notes"
                         >
-                          <FileText
-                            className="h-5 w-5 flex-shrink-0"
-                            aria-hidden="true"
-                          />
+                          <FileText className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
                           <span>My Notes</span>
                         </button>
                       </li>
@@ -468,10 +347,7 @@ export default function GroupsPage({
                           className="text-foreground hover:bg-accent flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors"
                           aria-label="Navigate to Settings"
                         >
-                          <Settings
-                            className="h-5 w-5 flex-shrink-0"
-                            aria-hidden="true"
-                          />
+                          <Settings className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
                           <span>Settings</span>
                         </button>
                       </li>
@@ -488,10 +364,7 @@ export default function GroupsPage({
                       alt={`${userName}'s avatar`}
                       className="object-cover"
                     />
-                    <AvatarFallback
-                      className="bg-muted"
-                      aria-label={`${userName}'s avatar`}
-                    >
+                    <AvatarFallback className="bg-muted" aria-label={`${userName}'s avatar`}>
                       <span className="text-muted-foreground text-sm font-semibold">
                         {userName
                           .split(" ")
@@ -502,13 +375,10 @@ export default function GroupsPage({
                       </span>
                     </AvatarFallback>
                   </Avatar>
+
                   <div className="min-w-0 flex-1">
-                    <p className="text-foreground truncate text-sm font-medium">
-                      {userName}
-                    </p>
-                    <p className="text-muted-foreground truncate text-xs">
-                      {userEmail}
-                    </p>
+                    <p className="text-foreground truncate text-sm font-medium">{userName}</p>
+                    <p className="text-muted-foreground truncate text-xs">{userEmail}</p>
                   </div>
                 </div>
               </div>
@@ -521,30 +391,21 @@ export default function GroupsPage({
           <header className="border-border bg-card border-b">
             <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
               <div>
-                <h2 className="text-foreground text-2xl font-bold">
-                  Group Chats
-                </h2>
+                <h2 className="text-foreground text-2xl font-bold">Group Chats</h2>
                 <p className="text-muted-foreground text-sm">
                   Real-time discussions with your study groups.
                 </p>
               </div>
+
               <div className="flex items-center gap-3">
                 <ModeToggle />
-                {groups.length > 0 && (
+
+                {!isGroupsLoading && userGroups.length > 0 && (
                   <Select
-                    value={
-                      selectedGroupId ? String(selectedGroupId) : undefined
-                    }
-                    onValueChange={(value) => {
-                      const id = Number(value);
-                      const group = userGroups.find((g) => g.id === id);
-                      if (group) handleSelectGroup(group);
-                    }}
+                    value={selectedGroupId ? String(selectedGroupId) : undefined}
+                    onValueChange={(value) => handleSelectGroup(Number(value))}
                   >
-                    <SelectTrigger
-                      className="w-56"
-                      aria-label="Select a group to chat"
-                    >
+                    <SelectTrigger className="w-56" aria-label="Select a group to chat">
                       <SelectValue placeholder="Select a group" />
                     </SelectTrigger>
                     <SelectContent>
@@ -565,6 +426,7 @@ export default function GroupsPage({
                   <PlusCircle className="mr-2 h-4 w-4" aria-hidden="true" />
                   Create Group
                 </Button>
+
                 <Button
                   variant="outline"
                   onClick={() => setIsJoinGroupOpen(true)}
@@ -576,17 +438,13 @@ export default function GroupsPage({
             </div>
           </header>
 
-          <main
-            id="main-content"
-            className="mx-auto max-w-6xl space-y-6 px-6 py-6"
-          >
-            {/* Active group chat */}
+          <main id="main-content" className="mx-auto max-w-6xl space-y-6 px-6 py-6">
             <section aria-label="Group chat conversation">
               {selectedGroup ? (
                 <GroupChat
                   group={selectedGroup as GroupChatGroup}
                   user={user}
-                  authorId={authorId}
+                  authorId={null}
                 />
               ) : (
                 <div
@@ -594,10 +452,7 @@ export default function GroupsPage({
                   role="status"
                   aria-live="polite"
                 >
-                  <p>
-                    Select a group from the dropdown above, or join/create one
-                    to start chatting.
-                  </p>
+                  <p>Select a group from the dropdown above, or join/create one to start chatting.</p>
                 </div>
               )}
             </section>
@@ -616,44 +471,28 @@ export default function GroupsPage({
 
             <div className="space-y-4 py-2">
               {errorMessage && (
-                <p
-                  className="text-sm text-red-600"
-                  role="alert"
-                  aria-live="polite"
-                >
+                <p className="text-sm text-red-600" role="alert" aria-live="polite">
                   {errorMessage}
                 </p>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="group-name">
-                  Group name <span aria-label="required">*</span>
-                </Label>
+                <Label htmlFor="group-name">Group name *</Label>
                 <Input
                   id="group-name"
                   placeholder="e.g., Study Squad"
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
-                  aria-required="true"
-                  aria-invalid={
-                    errorMessage && !groupName.trim() ? "true" : "false"
-                  }
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="course">
-                  Course <span aria-label="required">*</span>
-                </Label>
+                <Label htmlFor="course">Course *</Label>
                 <Input
                   id="course"
                   placeholder="e.g., COMP 110"
                   value={course}
                   onChange={(e) => setCourse(e.target.value)}
-                  aria-required="true"
-                  aria-invalid={
-                    errorMessage && !course.trim() ? "true" : "false"
-                  }
                 />
               </div>
 
@@ -665,7 +504,6 @@ export default function GroupsPage({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={4}
-                  aria-label="Group description"
                 />
               </div>
 
@@ -676,7 +514,6 @@ export default function GroupsPage({
                   type="file"
                   accept="image/*"
                   onChange={handleImageChange}
-                  aria-label="Upload group image"
                 />
                 {groupImage && (
                   <p className="text-xs text-gray-500" aria-live="polite">
@@ -687,11 +524,7 @@ export default function GroupsPage({
             </div>
 
             <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsCreateGroupOpen(false)}
-                disabled={isSubmitting}
-              >
+              <Button variant="outline" onClick={() => setIsCreateGroupOpen(false)} disabled={isSubmitting}>
                 Cancel
               </Button>
               <Button
@@ -717,44 +550,30 @@ export default function GroupsPage({
 
             <div className="space-y-4 py-2">
               {errorMessage && (
-                <p
-                  className="text-sm text-red-600"
-                  role="alert"
-                  aria-live="polite"
-                >
+                <p className="text-sm text-red-600" role="alert" aria-live="polite">
                   {errorMessage}
                 </p>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="join-code">
-                  Join code <span aria-label="required">*</span>
-                </Label>
+                <Label htmlFor="join-code">Join code *</Label>
                 <Input
                   id="join-code"
                   placeholder="e.g., ABC123"
                   value={joinCode}
                   onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                  aria-required="true"
-                  aria-invalid={
-                    errorMessage && !joinCode.trim() ? "true" : "false"
-                  }
                 />
               </div>
             </div>
 
             <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsJoinGroupOpen(false)}
-                disabled={isJoining}
-              >
+              <Button variant="outline" onClick={() => setIsJoinGroupOpen(false)} disabled={isJoining}>
                 Cancel
               </Button>
               <Button
                 onClick={handleJoinGroup}
                 className="bg-blue-600 text-white hover:bg-blue-700"
-                disabled={!joinCode || isJoining}
+                disabled={!joinCode.trim() || isJoining}
               >
                 {isJoining ? "Joining..." : "Join Group"}
               </Button>
@@ -766,76 +585,15 @@ export default function GroupsPage({
   );
 }
 
-export const getServerSideProps: GetServerSideProps<GroupsPageProps> = async (
-  context,
-) => {
+export const getServerSideProps: GetServerSideProps<GroupsPageProps> = async (context) => {
   const supabase = createSupabaseServerClient(context);
-
   const {
     data: { user: authUser },
   } = await supabase.auth.getUser();
 
-  let subject: Subject | null = null;
-  let authorId: number | null = null;
-  let userGroups: Group[] = [];
-
-  type MembershipRow = {
-    group: Group | Group[] | null;
-  };
-
-  if (authUser) {
-    subject = { id: authUser.id } as Subject;
-
-    if (authUser.email) {
-      const { data: dbUser } = await supabase
-        .from("users")
-        .select("id")
-        .eq("email", authUser.email)
-        .maybeSingle();
-
-      if (dbUser?.id != null) {
-        authorId = dbUser.id;
-      }
-    }
-
-    if (authorId != null) {
-      const { data: memberships, error: membershipsError } = await supabase
-        .from("memberships")
-        .select(
-          `
-          group:groups!memberships_group_id_fkey (
-            id,
-            name,
-            description,
-            owner_id,
-            is_private,
-            join_code,
-            created_at
-          )
-        `,
-        )
-        .eq("user_id", authorId);
-
-      if (!membershipsError && memberships) {
-        const membershipRows = memberships as unknown as MembershipRow[];
-
-        userGroups = membershipRows
-          .map((row) => {
-            if (!row.group) return null;
-
-            const group = Array.isArray(row.group) ? row.group[0] : row.group;
-            return group ?? null;
-          })
-          .filter((group): group is Group => group !== null);
-      }
-    }
-  }
-
   return {
     props: {
-      user: subject,
-      authorId,
-      userGroups,
+      user: authUser ? ({ id: authUser.id } as Subject) : null,
     },
   };
 };
